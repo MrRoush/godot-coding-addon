@@ -16,6 +16,8 @@ const CONDITION_TYPES := {
 	"Collision: Body Exited": "collision_body_exited",
 	"Collision: Area Entered": "collision_area_entered",
 	"Collision: Area Exited": "collision_area_exited",
+	"Collision: Is Overlapping (while inside)": "collision_is_overlapping",
+	"UI: Button Pressed": "ui_button_pressed",
 	"Signal: Signal Received": "signal_received",
 	"Property: Compare Value": "property_compare",
 	"Timer: Repeating Timer": "timer_repeat",
@@ -121,6 +123,12 @@ func create_condition_from_key(key: String) -> ESCondition:
 			var c := ESCollisionCondition.new()
 			c.collision_type = ESCollisionCondition.CollisionType.AREA_EXITED
 			return c
+		"collision_is_overlapping":
+			var c := ESCollisionCondition.new()
+			c.collision_type = ESCollisionCondition.CollisionType.IS_OVERLAPPING
+			return c
+		"ui_button_pressed":
+			return ESButtonCondition.new()
 		"signal_received":
 			return ESSignalCondition.new()
 		"property_compare":
@@ -182,6 +190,10 @@ func build_property_fields(container: VBoxContainer, condition: ESCondition) -> 
 			"Path to the Area2D/Area3D node (leave empty for parent)")
 		_add_string_field(container, "Filter Group:", condition, "filter_group",
 			"Only trigger for nodes in this group (leave empty for all)")
+
+	elif condition is ESButtonCondition:
+		_add_node_path_field(container, "Button Node:", condition, "button_path",
+			"Path to the Button node to listen to (e.g., ../StartButton)")
 
 	elif condition is ESSignalCondition:
 		_add_node_path_field(container, "Source Node:", condition, "source_path",

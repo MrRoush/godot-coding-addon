@@ -7,11 +7,27 @@ var _property_editor: VBoxContainer
 var _selected_action: ESAction = null
 var _editing_action: ESAction = null
 
+# Direction presets for TRANSLATE / SET_VELOCITY.
+const DIRECTION_PRESETS := {
+	"Right →": Vector2(1, 0),
+	"Left ←": Vector2(-1, 0),
+	"Down ↓": Vector2(0, 1),
+	"Up ↑": Vector2(0, -1),
+	"Down-Right ↘": Vector2(1, 1),
+	"Down-Left ↙": Vector2(-1, 1),
+	"Up-Right ↗": Vector2(1, -1),
+	"Up-Left ↖": Vector2(-1, -1),
+	"Custom (X/Y)": Vector2.ZERO,
+}
+
 # Action type registry.
 const ACTION_TYPES := {
-	"Movement: Translate (Move)": "move_translate",
+	"Movement: Move (Translate)": "move_translate",
 	"Movement: Set Position": "move_set_position",
-	"Movement: Move Toward": "move_toward",
+	"Movement: Move Toward Point": "move_toward",
+	"Movement: Move Toward Node (dynamic)": "move_toward_node",
+	"Movement: Set Velocity (Physics)": "move_velocity",
+	"Movement: Apply Knockback": "knockback",
 	"Property: Set Value": "prop_set",
 	"Property: Add Value": "prop_add",
 	"Property: Subtract Value": "prop_subtract",
@@ -24,6 +40,9 @@ const ACTION_TYPES := {
 	"Animation: Pause": "anim_pause",
 	"Scene: Create Instance": "scene_create",
 	"Scene: Destroy Node": "scene_destroy",
+	"Scene: Change Scene": "scene_change",
+	"Scene: Show Node": "scene_show",
+	"Scene: Hide Node": "scene_hide",
 	"Audio: Play Sound": "sound_play",
 	"Audio: Stop Sound": "sound_stop",
 	"Debug: Print Message": "debug_print",
@@ -105,6 +124,16 @@ func create_action_from_key(key: String) -> ESAction:
 			var a := ESMoveAction.new()
 			a.move_type = ESMoveAction.MoveType.MOVE_TOWARD
 			return a
+		"move_toward_node":
+			var a := ESMoveAction.new()
+			a.move_type = ESMoveAction.MoveType.MOVE_TOWARD_NODE
+			return a
+		"move_velocity":
+			var a := ESMoveAction.new()
+			a.move_type = ESMoveAction.MoveType.SET_VELOCITY
+			return a
+		"knockback":
+			return ESKnockbackAction.new()
 		"prop_set":
 			var a := ESSetPropertyAction.new()
 			a.set_mode = ESSetPropertyAction.SetMode.SET
@@ -151,6 +180,18 @@ func create_action_from_key(key: String) -> ESAction:
 			var a := ESSceneAction.new()
 			a.operation = ESSceneAction.SceneOp.DESTROY
 			return a
+		"scene_change":
+			var a := ESSceneAction.new()
+			a.operation = ESSceneAction.SceneOp.CHANGE_SCENE
+			return a
+		"scene_show":
+			var a := ESSceneAction.new()
+			a.operation = ESSceneAction.SceneOp.SHOW
+			return a
+		"scene_hide":
+			var a := ESSceneAction.new()
+			a.operation = ESSceneAction.SceneOp.HIDE
+			return a
 		"sound_play":
 			var a := ESSoundAction.new()
 			a.operation = ESSoundAction.SoundOp.PLAY
@@ -189,19 +230,41 @@ func _build_editor_ui(action: ESAction) -> void:
 func build_property_fields(container: VBoxContainer, action: ESAction) -> void:
 	if action is ESMoveAction:
 		_add_node_path_field(container, "Target Node:", action, "target_path",
-			"Node to move (leave empty for parent)")
-		_add_float_field(container, "X:", action, "x")
-		_add_float_field(container, "Y:", action, "y")
-		_add_float_field(container, "Speed:", action, "speed")
-		_add_bool_field(container, "Use Delta Time:", action, "use_delta")
+			"Node to move (leave empty for parent, or type $collider)")
+		match action.move_type:
+			ESMoveAction.MoveType.TRANSLATE, ESMoveAction.MoveType.SET_VELOCITY:
+				_add_direction_dropdown(container, action)
+				_add_float_field(container, "Speed:", action, "speed")
+				_add_bool_field(container, "Use Delta Time:", action, "use_delta")
+			ESMoveAction.MoveType.SET_POSITION:
+				_add_float_field(container, "X:", action, "x")
+				_add_float_field(container, "Y:", action, "y")
+			ESMoveAction.MoveType.MOVE_TOWARD:
+				_add_float_field(container, "Target X:", action, "x")
+				_add_float_field(container, "Target Y:", action, "y")
+				_add_float_field(container, "Speed:", action, "speed")
+				_add_bool_field(container, "Use Delta Time:", action, "use_delta")
+			ESMoveAction.MoveType.MOVE_TOWARD_NODE:
+				_add_node_path_field(container, "Toward Node:", action, "toward_node_path",
+					"Node to chase (e.g., ../Player, or $collider)")
+				_add_float_field(container, "Speed:", action, "speed")
+				_add_bool_field(container, "Use Delta Time:", action, "use_delta")
+
+	elif action is ESKnockbackAction:
+		_add_node_path_field(container, "Source Node:", action, "source_node_path",
+			"Node pushing outward (leave empty for parent)")
+		_add_node_path_field(container, "Target Node:", action, "target_path",
+			"Node to knock back (type $collider for last collision)")
+		_add_float_field(container, "Force:", action, "force")
+		_add_bool_field(container, "Use Velocity (Physics):", action, "use_velocity")
 
 	elif action is ESSetPropertyAction:
 		_add_node_path_field(container, "Target Node:", action, "target_path",
-			"Node to modify (leave empty for parent)")
+			"Node to modify (leave empty for parent, or $collider)")
 		_add_string_field(container, "Property Name:", action, "property_name",
 			"e.g., position.x, visible, modulate.a, scale.x")
 		_add_string_field(container, "Value:", action, "value",
-			"Value to set/add/subtract/multiply")
+			"Value to set/add. Use {../Node:prop} for live values, e.g., Health: {../Player:health}")
 		_add_enum_field(container, "Mode:", action, "set_mode",
 			["Set", "Add", "Subtract", "Multiply", "Toggle"])
 
@@ -220,16 +283,22 @@ func build_property_fields(container: VBoxContainer, action: ESAction) -> void:
 			"Name of the animation to play")
 
 	elif action is ESSceneAction:
-		if action.operation == ESSceneAction.SceneOp.INSTANTIATE:
-			_add_string_field(container, "Scene Path:", action, "scene_path",
-				"res://path/to/scene.tscn")
-			_add_node_path_field(container, "Parent Node:", action, "parent_path",
-				"Where to add the instance (leave empty for scene root)")
-			_add_vector2_field(container, "Spawn Position:", action, "spawn_position")
-			_add_bool_field(container, "Use Parent Position:", action, "use_parent_position")
-		else:
-			_add_node_path_field(container, "Destroy Target:", action, "destroy_target_path",
-				"Node to destroy (leave empty for parent)")
+		match action.operation:
+			ESSceneAction.SceneOp.INSTANTIATE:
+				_add_string_field(container, "Scene Path:", action, "scene_path",
+					"res://path/to/scene.tscn")
+				_add_node_path_field(container, "Parent Node:", action, "parent_path",
+					"Where to add the instance (leave empty for scene root)")
+				_add_node_path_field(container, "Spawn at Marker:", action, "spawn_at_node_path",
+					"Marker2D node — spawns at its position/rotation (overrides below)")
+				_add_vector2_field(container, "Spawn Position:", action, "spawn_position")
+				_add_bool_field(container, "Use Parent Position:", action, "use_parent_position")
+			ESSceneAction.SceneOp.DESTROY, ESSceneAction.SceneOp.SHOW, ESSceneAction.SceneOp.HIDE:
+				_add_node_path_field(container, "Target Node:", action, "destroy_target_path",
+					"Node to target (leave empty for parent, or $collider)")
+			ESSceneAction.SceneOp.CHANGE_SCENE:
+				_add_string_field(container, "Scene Path:", action, "scene_path",
+					"res://path/to/next_scene.tscn")
 
 	elif action is ESSoundAction:
 		_add_node_path_field(container, "Audio Player:", action, "player_path",
@@ -388,3 +457,77 @@ func _add_string_array_field(container: VBoxContainer, label_text: String, obj: 
 		obj.set(prop, result)
 	)
 	hbox.add_child(edit)
+
+
+## Add a direction dropdown for movement actions (TRANSLATE / SET_VELOCITY).
+## Selecting a preset auto-fills the action's x and y properties.
+func _add_direction_dropdown(container: VBoxContainer, action: ESMoveAction) -> void:
+	var hbox := HBoxContainer.new()
+	container.add_child(hbox)
+
+	var dir_label := Label.new()
+	dir_label.text = "Direction:"
+	dir_label.custom_minimum_size.x = 150
+	hbox.add_child(dir_label)
+
+	var dropdown := OptionButton.new()
+	dropdown.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for dir_name in DIRECTION_PRESETS:
+		dropdown.add_item(dir_name)
+	hbox.add_child(dropdown)
+
+	# Custom X/Y row (shown only when "Custom (X/Y)" is selected).
+	var xy_row := HBoxContainer.new()
+	container.add_child(xy_row)
+
+	var x_lbl := Label.new()
+	x_lbl.text = "X:"
+	xy_row.add_child(x_lbl)
+
+	var x_spin := SpinBox.new()
+	x_spin.min_value = -99999.0
+	x_spin.max_value = 99999.0
+	x_spin.step = 0.1
+	x_spin.value = action.x
+	x_spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	x_spin.value_changed.connect(func(val: float): action.x = val)
+	xy_row.add_child(x_spin)
+
+	var y_lbl := Label.new()
+	y_lbl.text = "Y:"
+	xy_row.add_child(y_lbl)
+
+	var y_spin := SpinBox.new()
+	y_spin.min_value = -99999.0
+	y_spin.max_value = 99999.0
+	y_spin.step = 0.1
+	y_spin.value = action.y
+	y_spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	y_spin.value_changed.connect(func(val: float): action.y = val)
+	xy_row.add_child(y_spin)
+
+	# Determine which preset matches the current x/y (if any).
+	var preset_names := DIRECTION_PRESETS.keys()
+	var custom_idx := preset_names.size() - 1  # "Custom (X/Y)" is last.
+	var initial_idx := custom_idx
+	var current_dir := Vector2(action.x, action.y)
+	for i in range(preset_names.size() - 1):
+		var dir: Vector2 = DIRECTION_PRESETS[preset_names[i]]
+		if current_dir.is_equal_approx(dir):
+			initial_idx = i
+			break
+	dropdown.selected = initial_idx
+	xy_row.visible = (initial_idx == custom_idx)
+
+	dropdown.item_selected.connect(func(idx: int):
+		var name_key := preset_names[idx]
+		if name_key == "Custom (X/Y)":
+			xy_row.visible = true
+		else:
+			var dir: Vector2 = DIRECTION_PRESETS[name_key]
+			action.x = dir.x
+			action.y = dir.y
+			x_spin.value = dir.x
+			y_spin.value = dir.y
+			xy_row.visible = false
+	)

@@ -7,14 +7,16 @@ A visual **Event Sheet** programming addon for Godot 4.5, designed for beginning
 - **Event Sheet Editor** — A bottom panel in the Godot editor for visually building game logic
 - **No Code Required** — Students define behavior with conditions and actions, not GDScript
 - **Full Signal Support** — Create, emit, and listen for custom signals between nodes
-- **Collision Detection** — Detect body and area collisions with group filtering
-- **Input Handling** — Respond to keyboard input, action presses, and held keys
-- **Property Control** — Read, set, add, subtract, multiply, or toggle any node property
-- **Movement** — Translate, set position, or move toward targets (2D and 3D)
+- **Collision Detection** — Detect body and area collisions with group filtering; persistent overlap tracking
+- **Input Handling** — Respond to keyboard input, action presses, and held keys; UI button clicks
+- **Property Control** — Read, set, add, subtract, multiply, or toggle any node property; dynamic text with live value placeholders
+- **Movement** — Translate, set position, move toward targets or dynamic nodes, physics velocity (2D and 3D)
+- **Knockback** — Compute directional knockback between two nodes and push via velocity or position
 - **Timers** — Repeating and one-shot timers without writing code
 - **Animation & Audio** — Play/stop animations and sounds
-- **Scene Management** — Instantiate scenes and destroy nodes at runtime
+- **Scene Management** — Instantiate scenes (with optional Marker2D spawn point), destroy nodes, change scenes, show/hide nodes
 - **Debug Printing** — Print messages with variable placeholders for easy debugging
+- **Collider Reference** — Use `$collider` in any target field to reference the node from the last collision
 
 ## Quick Start
 
@@ -66,6 +68,8 @@ Click **+ Add Event** to open the event wizard. Each event uses a simple **"When
 | **Collision** | Body Exited | A physics body exited the detector area |
 | **Collision** | Area Entered | Another area entered the detector area |
 | **Collision** | Area Exited | Another area exited the detector area |
+| **Collision** | Is Overlapping | True every frame while any matching body is inside the area (ideal for floor switches) |
+| **UI** | Button Pressed | Fires once when a UI Button node is clicked |
 | **Signals** | Signal Received | Listens for any signal on a target node |
 | **Properties** | Compare Value | Compares a node property against a value (==, !=, >, <, >=, <=) |
 | **Timing** | Repeating Timer | Triggers periodically at a set interval |
@@ -78,18 +82,35 @@ Click **+ Add Event** to open the event wizard. Each event uses a simple **"When
 
 | Category | Action | Description |
 |----------|--------|-------------|
-| **Movement** | Translate | Move a node by an offset at a given speed |
+| **Movement** | Translate | Move a node by an offset at a given speed; includes direction presets (Up/Down/Left/Right) |
 | **Movement** | Set Position | Set a node's absolute position |
-| **Movement** | Move Toward | Move a node toward a target position |
-| **Properties** | Set Value | Set a property to a specific value |
+| **Movement** | Move Toward Point | Move a node toward a fixed (x, y) coordinate |
+| **Movement** | Move Toward Node | Move a node toward another node's live position (for chasing enemies) |
+| **Movement** | Set Velocity (Physics) | Set `CharacterBody2D.velocity` and call `move_and_slide()` for wall-colliding movement |
+| **Movement** | Apply Knockback | Push a target node away from a source node (supports `$collider` as target) |
+| **Properties** | Set Value | Set a property to a value; supports `{../Node:prop}` placeholders for live HUD text |
 | **Properties** | Add / Subtract / Multiply | Modify a numeric property |
 | **Properties** | Toggle | Toggle a boolean property |
 | **Signals** | Emit Signal | Emit a signal (with optional arguments) on any node |
 | **Animation** | Play / Stop / Pause | Control AnimationPlayer or AnimatedSprite2D |
-| **Scene** | Create Instance | Instantiate a scene at a position |
-| **Scene** | Destroy Node | Remove a node from the scene tree |
+| **Scene** | Create Instance | Instantiate a scene; can spawn at a Marker2D's position and rotation |
+| **Scene** | Destroy Node | Remove a node from the scene tree (supports `$collider`) |
+| **Scene** | Change Scene | Transition to a completely different scene file |
+| **Scene** | Show Node | Make a node visible (`visible = true`) |
+| **Scene** | Hide Node | Make a node invisible (`visible = false`) |
 | **Audio** | Play / Stop Sound | Control AudioStreamPlayer nodes |
 | **Debug** | Print Message | Print to console (supports `{name}`, `{position}`, `{delta}` placeholders) |
+
+## Referencing the Collided Node with `$collider`
+
+After any collision condition fires, actions can use **`$collider`** as a target path to reference the node involved in the collision. This works in any action that accepts a target node path:
+
+```
+Event: "Weapon hits enemy"
+  Condition: Collision - Area Entered (group: "enemies")
+  Action: Apply Knockback — target: $collider, force: 300
+  Action: Destroy Node — target: $collider
+```
 
 ## Working with Signals
 
@@ -149,12 +170,14 @@ addons/godot_event_sheet/
 ├── conditions/             # Condition implementations
 │   ├── input_condition.gd
 │   ├── collision_condition.gd
+│   ├── button_condition.gd
 │   ├── signal_condition.gd
 │   ├── property_condition.gd
 │   ├── timer_condition.gd
 │   └── lifecycle_condition.gd
 ├── actions/                # Action implementations
 │   ├── move_action.gd
+│   ├── knockback_action.gd
 │   ├── set_property_action.gd
 │   ├── emit_signal_action.gd
 │   ├── animation_action.gd

@@ -107,8 +107,9 @@ func _determine_event_category(event: ESEventItem) -> String:
 					return "ready"
 				ESLifecycleCondition.LifecycleType.PHYSICS_PROCESS:
 					return "physics"
-		# Signal, collision, and timer conditions are evaluated in _process.
-		if cond is ESSignalCondition or cond is ESCollisionCondition or cond is ESTimerCondition:
+		# Signal, collision, timer, and button conditions are evaluated in _process.
+		if cond is ESSignalCondition or cond is ESCollisionCondition \
+				or cond is ESTimerCondition or cond is ESButtonCondition:
 			return "signal"
 	return "process"
 
@@ -133,6 +134,8 @@ func _setup_connections() -> void:
 				_connect_signal_condition(cond)
 			elif cond is ESTimerCondition:
 				_setup_timer(cond)
+			elif cond is ESButtonCondition:
+				_connect_button(cond)
 
 
 ## Connect collision signals from the detector node.
@@ -145,6 +148,21 @@ func _connect_collision(cond: ESCollisionCondition) -> void:
 
 	if not detector:
 		push_warning("EventSheet: Collision detector node not found.")
+		return
+
+	# IS_OVERLAPPING connects both entered and exited to track overlapping nodes.
+	if cond.collision_type == ESCollisionCondition.CollisionType.IS_OVERLAPPING:
+		for sig_name in ["body_entered", "body_exited"]:
+			if detector.has_signal(sig_name):
+				var callback: Callable
+				if sig_name == "body_entered":
+					callback = cond._on_overlap_entered
+				else:
+					callback = cond._on_overlap_exited
+				if not detector.is_connected(sig_name, callback):
+					detector.connect(sig_name, callback)
+					if debug_mode:
+						print("EventSheet: Connected '%s' on %s (IS_OVERLAPPING)" % [sig_name, detector.name])
 		return
 
 	var signal_name: String
@@ -206,6 +224,24 @@ func _setup_timer(cond: ESTimerCondition) -> void:
 		print("EventSheet: Created timer (%.1fs, one_shot=%s)" % [cond.wait_time, cond.one_shot])
 
 
+## Connect a Button node's "pressed" signal to the button condition.
+func _connect_button(cond: ESButtonCondition) -> void:
+	if cond.button_path.is_empty():
+		push_warning("EventSheet: Button condition has no button path specified.")
+		return
+	var button := get_node_or_null(cond.button_path)
+	if not button:
+		push_warning("EventSheet: Button not found at path: %s" % cond.button_path)
+		return
+	if not button.has_signal("pressed"):
+		push_warning("EventSheet: Node at '%s' does not have a 'pressed' signal." % cond.button_path)
+		return
+	if not button.is_connected("pressed", cond._on_button_pressed):
+		button.connect("pressed", cond._on_button_pressed)
+		if debug_mode:
+			print("EventSheet: Connected button 'pressed' on %s" % button.name)
+
+
 ## Evaluate a list of events and execute actions for those whose conditions pass.
 func _evaluate_events(events: Array, delta: float) -> void:
 	for event_res in events:
@@ -224,6 +260,13 @@ func _evaluate_events(events: Array, delta: float) -> void:
 				break
 
 		if all_pass and event.conditions.size() > 0:
+			# Store the colliding node (if any) so actions can reference it via "$collider".
+			for cond_res in event.conditions:
+				if cond_res is ESCollisionCondition:
+					var coll_cond := cond_res as ESCollisionCondition
+					if coll_cond.colliding_node:
+						set_meta(&"_es_last_collided_node", coll_cond.colliding_node)
+					break
 			if debug_mode:
 				print("EventSheet: Event '%s' triggered!" % event.event_name)
 			_execute_actions(event, delta)

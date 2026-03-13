@@ -41,22 +41,22 @@ func execute(controller: Node, _delta: float) -> void:
 	# Handle dot notation for nested properties.
 	var parts := property_name.split(".")
 	if parts.size() == 1:
-		_set_simple_property(target, property_name)
+		_set_simple_property(target, property_name, controller)
 	else:
-		_set_nested_property(target, parts)
+		_set_nested_property(target, parts, controller)
 
 
-func _set_simple_property(target: Node, prop: String) -> void:
+func _set_simple_property(target: Node, prop: String, controller: Node) -> void:
 	if not prop in target:
 		push_warning("EventSheet: Property '%s' not found on %s" % [prop, target.name])
 		return
 
 	var current = target.get(prop)
-	var new_val = _compute_value(current)
+	var new_val = _compute_value(current, controller)
 	target.set(prop, new_val)
 
 
-func _set_nested_property(target: Node, parts: PackedStringArray) -> void:
+func _set_nested_property(target: Node, parts: PackedStringArray, controller: Node) -> void:
 	# Navigate to the parent of the final property.
 	var current: Variant = target
 	for i in range(parts.size() - 1):
@@ -70,7 +70,7 @@ func _set_nested_property(target: Node, parts: PackedStringArray) -> void:
 
 	if current is Vector2:
 		var vec := current as Vector2
-		var val := float(value)
+		var val := float(_resolve_placeholders(value, controller))
 		match final_prop:
 			"x":
 				vec.x = _compute_float(vec.x, val)
@@ -83,7 +83,7 @@ func _set_nested_property(target: Node, parts: PackedStringArray) -> void:
 		target.set(parts[0], vec)
 	elif current is Vector3:
 		var vec := current as Vector3
-		var val := float(value)
+		var val := float(_resolve_placeholders(value, controller))
 		match final_prop:
 			"x":
 				vec.x = _compute_float(vec.x, val)
@@ -97,7 +97,7 @@ func _set_nested_property(target: Node, parts: PackedStringArray) -> void:
 		target.set(parts[0], vec)
 	elif current is Color:
 		var col := current as Color
-		var val := float(value)
+		var val := float(_resolve_placeholders(value, controller))
 		match final_prop:
 			"r": col.r = _compute_float(col.r, val)
 			"g": col.g = _compute_float(col.g, val)
@@ -109,20 +109,21 @@ func _set_nested_property(target: Node, parts: PackedStringArray) -> void:
 		target.set(parts[0], col)
 
 
-func _compute_value(current: Variant) -> Variant:
+func _compute_value(current: Variant, controller: Node) -> Variant:
+	var resolved := _resolve_placeholders(value, controller)
 	match set_mode:
 		SetMode.TOGGLE:
 			if current is bool:
 				return not current
 			return not bool(current)
 		SetMode.SET:
-			return _convert_to_type(value, typeof(current))
+			return _convert_to_type(resolved, typeof(current))
 		SetMode.ADD:
-			return current + _convert_to_type(value, typeof(current))
+			return current + _convert_to_type(resolved, typeof(current))
 		SetMode.SUBTRACT:
-			return current - _convert_to_type(value, typeof(current))
+			return current - _convert_to_type(resolved, typeof(current))
 		SetMode.MULTIPLY:
-			return current * _convert_to_type(value, typeof(current))
+			return current * _convert_to_type(resolved, typeof(current))
 	return current
 
 
@@ -162,4 +163,27 @@ func _convert_to_type(val: String, target_type: int) -> Variant:
 func _resolve_target(controller: Node) -> Node:
 	if target_path.is_empty():
 		return controller.get_parent()
+	var path_str := str(target_path)
+	if path_str == "$collider":
+		var meta_val = controller.get_meta(&"_es_last_collided_node", null)
+		return meta_val if meta_val is Node else null
 	return controller.get_node_or_null(target_path)
+
+
+## Resolve {node_path:property} placeholders in a string value.
+## Example: "Health: {../Player:health}" → "Health: 5"
+func _resolve_placeholders(val: String, controller: Node) -> String:
+	if not "{" in val:
+		return val
+	var result := val
+	var regex := RegEx.new()
+	if regex.compile("\\{([^}:]+):([^}]+)\\}") != OK:
+		push_warning("EventSheet: Failed to compile placeholder regex.")
+		return result
+	for m in regex.search_all(result):
+		var node_path := m.get_string(1)
+		var prop := m.get_string(2)
+		var node := controller.get_node_or_null(NodePath(node_path))
+		if node and prop in node:
+			result = result.replace(m.get_string(0), str(node.get(prop)))
+	return result

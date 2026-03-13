@@ -3,9 +3,11 @@ extends ESAction
 ## Action that moves a 2D or 3D node.
 
 enum MoveType {
-	TRANSLATE,    ## Move by an offset (relative)
-	SET_POSITION, ## Set absolute position
-	MOVE_TOWARD,  ## Move toward a target position at a given speed
+	TRANSLATE,         ## Move by an offset (relative)
+	SET_POSITION,      ## Set absolute position
+	MOVE_TOWARD,       ## Move toward a target position (x, y) at a given speed
+	MOVE_TOWARD_NODE,  ## Move toward another node's current position at a given speed
+	SET_VELOCITY,      ## Set velocity and call move_and_slide() (CharacterBody2D/3D)
 }
 
 ## How to move the node.
@@ -14,17 +16,21 @@ enum MoveType {
 ## Path to the node to move. Leave empty to move the EventController's parent.
 @export var target_path: NodePath = NodePath("")
 
-## X component of the movement or position.
+## X component of the movement, position, or velocity direction.
 @export var x: float = 0.0
 
-## Y component of the movement or position.
+## Y component of the movement, position, or velocity direction.
 @export var y: float = 0.0
 
-## Speed in pixels/units per second (used with TRANSLATE and MOVE_TOWARD).
+## Speed in pixels/units per second (used with TRANSLATE, MOVE_TOWARD, MOVE_TOWARD_NODE, SET_VELOCITY).
 @export var speed: float = 200.0
 
 ## If true, multiply the translation by delta time for frame-independent movement.
 @export var use_delta: bool = true
+
+## Path to the target node to move toward (used with MOVE_TOWARD_NODE).
+## Use "$collider" to target the last collided node.
+@export var toward_node_path: NodePath = NodePath("")
 
 
 func get_summary() -> String:
@@ -36,6 +42,11 @@ func get_summary() -> String:
 			return "Set %s position to (%.0f, %.0f)" % [target, x, y]
 		MoveType.MOVE_TOWARD:
 			return "Move %s toward (%.0f, %.0f) at speed %.0f" % [target, x, y, speed]
+		MoveType.MOVE_TOWARD_NODE:
+			var goal_node := str(toward_node_path) if not toward_node_path.is_empty() else "?"
+			return "Move %s toward node %s at speed %.0f" % [target, goal_node, speed]
+		MoveType.SET_VELOCITY:
+			return "Set %s velocity (%.0f, %.0f) * speed %.0f" % [target, x, y, speed]
 	return "Move"
 
 
@@ -51,12 +62,12 @@ func execute(controller: Node, delta: float) -> void:
 	var dt: float = delta if use_delta else 1.0
 
 	if target is Node2D:
-		_execute_2d(target as Node2D, dt)
+		_execute_2d(target as Node2D, dt, controller)
 	elif target is Node3D:
-		_execute_3d(target as Node3D, dt)
+		_execute_3d(target as Node3D, dt, controller)
 
 
-func _execute_2d(node: Node2D, dt: float) -> void:
+func _execute_2d(node: Node2D, dt: float, controller: Node) -> void:
 	match move_type:
 		MoveType.TRANSLATE:
 			var direction := Vector2(x, y).normalized()
@@ -66,9 +77,19 @@ func _execute_2d(node: Node2D, dt: float) -> void:
 		MoveType.MOVE_TOWARD:
 			var goal := Vector2(x, y)
 			node.position = node.position.move_toward(goal, speed * dt)
+		MoveType.MOVE_TOWARD_NODE:
+			var goal_node := _resolve_toward_node(controller)
+			if goal_node and goal_node is Node2D:
+				node.position = node.position.move_toward(
+					(goal_node as Node2D).global_position, speed * dt)
+		MoveType.SET_VELOCITY:
+			if node is CharacterBody2D:
+				var body := node as CharacterBody2D
+				body.velocity = Vector2(x, y).normalized() * speed
+				body.move_and_slide()
 
 
-func _execute_3d(node: Node3D, dt: float) -> void:
+func _execute_3d(node: Node3D, dt: float, controller: Node) -> void:
 	match move_type:
 		MoveType.TRANSLATE:
 			var direction := Vector3(x, y, 0).normalized()
@@ -78,9 +99,33 @@ func _execute_3d(node: Node3D, dt: float) -> void:
 		MoveType.MOVE_TOWARD:
 			var goal := Vector3(x, y, 0)
 			node.position = node.position.move_toward(goal, speed * dt)
+		MoveType.MOVE_TOWARD_NODE:
+			var goal_node := _resolve_toward_node(controller)
+			if goal_node and goal_node is Node3D:
+				node.position = node.position.move_toward(
+					(goal_node as Node3D).global_position, speed * dt)
+		MoveType.SET_VELOCITY:
+			if node is CharacterBody3D:
+				var body := node as CharacterBody3D
+				body.velocity = Vector3(x, y, 0).normalized() * speed
+				body.move_and_slide()
 
 
 func _resolve_target(controller: Node) -> Node:
 	if target_path.is_empty():
 		return controller.get_parent()
+	var path_str := str(target_path)
+	if path_str == "$collider":
+		var meta_val = controller.get_meta(&"_es_last_collided_node", null)
+		return meta_val if meta_val is Node else null
 	return controller.get_node_or_null(target_path)
+
+
+func _resolve_toward_node(controller: Node) -> Node:
+	if toward_node_path.is_empty():
+		return null
+	var path_str := str(toward_node_path)
+	if path_str == "$collider":
+		var meta_val = controller.get_meta(&"_es_last_collided_node", null)
+		return meta_val if meta_val is Node else null
+	return controller.get_node_or_null(toward_node_path)
