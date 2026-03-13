@@ -16,7 +16,7 @@ enum SoundOp {
 
 ## Optional: path to an audio file to load and play.
 ## If empty, plays whatever stream is already assigned on the player.
-@export_file("*.ogg,*.wav,*.mp3") var audio_path: String = ""
+@export_file("*.ogg", "*.wav", "*.mp3") var audio_path: String = ""
 
 ## Volume in dB.
 @export var volume_db: float = 0.0
