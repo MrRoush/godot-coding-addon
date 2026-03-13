@@ -36,11 +36,8 @@ func execute(controller: Node, _delta: float) -> void:
 		return
 
 	if not target.has_signal(signal_name):
-		# If the signal doesn't exist yet, try to add it dynamically.
-		if target.has_user_signal(signal_name):
-			pass  # Already registered as user signal.
-		else:
-			target.add_user_signal(signal_name)
+		# Register the signal dynamically if it doesn't exist yet.
+		target.add_user_signal(signal_name)
 
 	# Convert arguments and emit.
 	var args: Array = []

@@ -242,6 +242,8 @@ func _track_key_states() -> void:
 	# This is called at the end of _process to update "previous frame" states
 	# for conditions that track key transitions.
 	var sheet := event_sheet as ESEventSheet
+	if not sheet:
+		return
 	for event_res in sheet.events:
 		var event := event_res as ESEventItem
 		if not event:
