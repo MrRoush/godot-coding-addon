@@ -144,9 +144,9 @@ func _on_trigger_selected(index: int) -> void:
 
 	# Use condition_dialog factory to create the condition and build its UI.
 	var helper := ConditionDialog.new()
-	_selected_condition = helper._create_condition_from_key(key)
+	_selected_condition = helper.create_condition_from_key(key)
 	if _selected_condition:
-		helper._build_property_fields(_trigger_props, _selected_condition)
+		helper.build_property_fields(_trigger_props, _selected_condition)
 	helper.free()
 
 
@@ -160,7 +160,7 @@ func _on_reaction_selected(index: int) -> void:
 
 	# Use action_dialog factory to create the action and build its UI.
 	var helper := ActionDialog.new()
-	_selected_action = helper._create_action_from_key(key)
+	_selected_action = helper.create_action_from_key(key)
 	if _selected_action:
-		helper._build_property_fields(_reaction_props, _selected_action)
+		helper.build_property_fields(_reaction_props, _selected_action)
 	helper.free()

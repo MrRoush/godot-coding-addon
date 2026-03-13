@@ -38,6 +38,7 @@ func edit_controller(controller: Node) -> void:
 		if _current_sheet == null:
 			_current_sheet = ESEventSheet.new()
 			controller.set("event_sheet", _current_sheet)
+			print("EventSheet: Auto-created a new Event Sheet for '%s'. Ready to add events!" % controller.name)
 	else:
 		_current_sheet = null
 	_refresh()

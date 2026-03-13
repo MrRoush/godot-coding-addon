@@ -85,13 +85,13 @@ func _on_action_type_selected(index: int) -> void:
 	for child in _property_editor.get_children():
 		child.queue_free()
 
-	_selected_action = _create_action_from_key(type_key)
+	_selected_action = create_action_from_key(type_key)
 	if _selected_action:
-		_build_property_fields(_property_editor, _selected_action)
+		build_property_fields(_property_editor, _selected_action)
 
 
 ## Create an action resource from a type key.
-func _create_action_from_key(key: String) -> ESAction:
+func create_action_from_key(key: String) -> ESAction:
 	match key:
 		"move_translate":
 			var a := ESMoveAction.new()
@@ -181,12 +181,12 @@ func _build_editor_ui(action: ESAction) -> void:
 	var sep := HSeparator.new()
 	vbox.add_child(sep)
 
-	_build_property_fields(vbox, action)
+	build_property_fields(vbox, action)
 	_selected_action = action
 
 
 ## Build property fields for any action type.
-func _build_property_fields(container: VBoxContainer, action: ESAction) -> void:
+func build_property_fields(container: VBoxContainer, action: ESAction) -> void:
 	if action is ESMoveAction:
 		_add_node_path_field(container, "Target Node:", action, "target_path",
 			"Node to move (leave empty for parent)")

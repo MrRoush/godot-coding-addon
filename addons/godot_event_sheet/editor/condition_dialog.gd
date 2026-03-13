@@ -85,13 +85,13 @@ func _on_condition_type_selected(index: int) -> void:
 		child.queue_free()
 
 	# Create the condition and show its properties.
-	_selected_condition = _create_condition_from_key(type_key)
+	_selected_condition = create_condition_from_key(type_key)
 	if _selected_condition:
-		_build_property_fields(_property_editor, _selected_condition)
+		build_property_fields(_property_editor, _selected_condition)
 
 
 ## Create a condition resource from a type key.
-func _create_condition_from_key(key: String) -> ESCondition:
+func create_condition_from_key(key: String) -> ESCondition:
 	match key:
 		"input_pressed":
 			var c := ESInputCondition.new()
@@ -165,12 +165,12 @@ func _build_editor_ui(condition: ESCondition) -> void:
 	var sep := HSeparator.new()
 	vbox.add_child(sep)
 
-	_build_property_fields(vbox, condition)
+	build_property_fields(vbox, condition)
 	_selected_condition = condition
 
 
 ## Build property input fields for any condition type.
-func _build_property_fields(container: VBoxContainer, condition: ESCondition) -> void:
+func build_property_fields(container: VBoxContainer, condition: ESCondition) -> void:
 	if condition is ESInputCondition:
 		_add_string_field(container, "Action or Key Name:", condition, "action_or_key",
 			"Enter an input action (e.g., ui_up, ui_accept) or key name (e.g., W, Space, Up)")
