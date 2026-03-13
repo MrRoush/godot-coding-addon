@@ -1,0 +1,14 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; but it can also be manually edited if needed.
+
+[application]
+
+config/name="Godot Event Sheet Addon"
+config/description="A visual event sheet programming addon for Godot 4.5, designed for beginning programmers."
+config/features=PackedStringArray("4.5")
+config/icon="res://addons/godot_event_sheet/icons/icon.svg"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/godot_event_sheet/plugin.cfg")
