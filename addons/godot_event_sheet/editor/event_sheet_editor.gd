@@ -72,6 +72,38 @@ func _build_ui() -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_toolbar.add_child(spacer)
 
+	# Collapse All button.
+	var collapse_all_btn := Button.new()
+	collapse_all_btn.text = "▶ Collapse All"
+	collapse_all_btn.tooltip_text = "Collapse all events"
+	collapse_all_btn.pressed.connect(func():
+		if not _current_sheet:
+			return
+		for evt in _current_sheet.events:
+			var item := evt as ESEventItem
+			if item:
+				item.collapsed = true
+		_mark_resource_modified()
+		_refresh()
+	)
+	_toolbar.add_child(collapse_all_btn)
+
+	# Expand All button.
+	var expand_all_btn := Button.new()
+	expand_all_btn.text = "▼ Expand All"
+	expand_all_btn.tooltip_text = "Expand all events"
+	expand_all_btn.pressed.connect(func():
+		if not _current_sheet:
+			return
+		for evt in _current_sheet.events:
+			var item := evt as ESEventItem
+			if item:
+				item.collapsed = false
+		_mark_resource_modified()
+		_refresh()
+	)
+	_toolbar.add_child(expand_all_btn)
+
 	# Add Event button.
 	var add_event_btn := Button.new()
 	add_event_btn.text = "+ Add Event"
@@ -213,6 +245,21 @@ func _create_event_row(event: ESEventItem, index: int) -> PanelContainer:
 	)
 	header.add_child(move_down_btn)
 
+	# Collapse toggle button.
+	var collapse_btn := Button.new()
+	if event.collapsed:
+		collapse_btn.text = "▶"
+		collapse_btn.tooltip_text = "Expand this event"
+	else:
+		collapse_btn.text = "▼"
+		collapse_btn.tooltip_text = "Collapse this event"
+	collapse_btn.pressed.connect(func():
+		event.collapsed = not event.collapsed
+		_mark_resource_modified()
+		_refresh()
+	)
+	header.add_child(collapse_btn)
+
 	# Block toggle button.
 	var block_btn := Button.new()
 	if event.is_block:
@@ -237,6 +284,24 @@ func _create_event_row(event: ESEventItem, index: int) -> PanelContainer:
 		_refresh()
 	)
 	header.add_child(delete_btn)
+
+	# -- Collapsed summary line (shown instead of body when collapsed) --
+	if event.collapsed:
+		var cond_count := event.conditions.size()
+		var action_count := event.actions.size()
+		var summary_parts := []
+		if cond_count > 0:
+			summary_parts.append("%d condition%s" % [cond_count, "s" if cond_count != 1 else ""])
+		if action_count > 0:
+			summary_parts.append("%d action%s" % [action_count, "s" if action_count != 1 else ""])
+		if event.is_block and event.sub_events.size() > 0:
+			var sc := event.sub_events.size()
+			summary_parts.append("%d sub-event%s" % [sc, "s" if sc != 1 else ""])
+		var summary_label := Label.new()
+		summary_label.text = "  (%s)" % (", ".join(summary_parts) if summary_parts.size() > 0 else "empty")
+		summary_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+		main_vbox.add_child(summary_label)
+		return panel
 
 	# -- Conditions & Actions columns --
 	var columns := HBoxContainer.new()
@@ -599,7 +664,7 @@ func _on_add_event() -> void:
 	if not _current_sheet:
 		return
 
-	var dialog := AddEventDialog.create()
+	var dialog := AddEventDialog.create(_current_controller)
 	add_child(dialog)
 	dialog.popup_centered(Vector2i(800, 600))
 	dialog.confirmed.connect(func():
@@ -616,7 +681,7 @@ func _on_add_event() -> void:
 
 
 func _on_add_sub_event(parent_event: ESEventItem) -> void:
-	var dialog := AddEventDialog.create()
+	var dialog := AddEventDialog.create(_current_controller)
 	add_child(dialog)
 	dialog.popup_centered(Vector2i(800, 600))
 	dialog.confirmed.connect(func():
@@ -643,7 +708,7 @@ func _on_sheet_name_changed(new_name: String) -> void:
 # -- Condition Dialogs --
 
 func _show_condition_dialog(event: ESEventItem) -> void:
-	var dialog := ConditionDialog.create_picker()
+	var dialog := ConditionDialog.create_picker(_current_controller)
 	add_child(dialog)
 	dialog.popup_centered(Vector2i(650, 450))
 	dialog.confirmed.connect(func():
@@ -656,7 +721,7 @@ func _show_condition_dialog(event: ESEventItem) -> void:
 
 
 func _show_condition_edit_dialog(cond: ESCondition, event: ESEventItem, index: int) -> void:
-	var dialog := ConditionDialog.create_editor(cond)
+	var dialog := ConditionDialog.create_editor(cond, _current_controller)
 	add_child(dialog)
 	dialog.popup_centered(Vector2i(650, 450))
 	dialog.confirmed.connect(func():
@@ -668,7 +733,7 @@ func _show_condition_edit_dialog(cond: ESCondition, event: ESEventItem, index: i
 # -- Action Dialogs --
 
 func _show_action_dialog(event: ESEventItem) -> void:
-	var dialog := ActionDialog.create_picker()
+	var dialog := ActionDialog.create_picker(_current_controller)
 	add_child(dialog)
 	dialog.popup_centered(Vector2i(650, 450))
 	dialog.confirmed.connect(func():
@@ -681,7 +746,7 @@ func _show_action_dialog(event: ESEventItem) -> void:
 
 
 func _show_action_edit_dialog(action: ESAction, event: ESEventItem, index: int) -> void:
-	var dialog := ActionDialog.create_editor(action)
+	var dialog := ActionDialog.create_editor(action, _current_controller)
 	add_child(dialog)
 	dialog.popup_centered(Vector2i(650, 450))
 	dialog.confirmed.connect(func():

@@ -29,6 +29,9 @@ enum LogicMode {
 ## Its own actions (if any) run first when conditions pass, then sub_events are evaluated.
 @export var is_block: bool = false
 
+## Whether this event is collapsed in the editor (UI-only, does not affect runtime).
+@export var collapsed: bool = false
+
 ## Child events nested under this block.
 ## Only evaluated when this block's own conditions all pass.
 ## Sub-events inherit the parent block's execution loop (process vs physics).
