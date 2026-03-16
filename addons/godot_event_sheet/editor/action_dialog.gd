@@ -338,7 +338,7 @@ func build_property_fields(container: VBoxContainer, action: ESAction) -> void:
 
 	elif action is ESGravityAction:
 		_add_node_path_field(container, "Target Node:", action, "target_path",
-			"CharacterBody2D/3D to apply gravity to (leave empty for parent)")
+			"Node to apply gravity to (leave empty for parent, or ../NodeName)")
 		_add_float_field(container, "Gravity:", action, "gravity")
 		_add_float_field(container, "Max Fall Speed:", action, "max_fall_speed")
 		_add_bool_field(container, "Call move_and_slide():", action, "call_move_and_slide")

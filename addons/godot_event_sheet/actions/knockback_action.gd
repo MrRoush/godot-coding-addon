@@ -35,7 +35,7 @@ func execute(controller: Node, _delta: float) -> void:
 	if source_node_path.is_empty():
 		source = controller.get_parent()
 	else:
-		source = controller.get_node_or_null(source_node_path)
+		source = _resolve_node(controller, source_node_path)
 
 	# Resolve target node.
 	var target: Node
@@ -44,7 +44,7 @@ func execute(controller: Node, _delta: float) -> void:
 		var meta_val = controller.get_meta(&"_es_last_collided_node", null)
 		target = meta_val if meta_val is Node else null
 	else:
-		target = controller.get_node_or_null(target_path)
+		target = _resolve_node(controller, target_path)
 
 	if not source or not target:
 		push_warning("EventSheet: Knockback source or target not found.")
@@ -68,3 +68,17 @@ func execute(controller: Node, _delta: float) -> void:
 		else:
 			# Instant position offset (one-frame impulse).
 			(target as Node3D).position += dir * force * 0.1
+
+
+## Resolve a node by path with sibling fallback.
+func _resolve_node(controller: Node, path: NodePath) -> Node:
+	var node := controller.get_node_or_null(path)
+	if node:
+		return node
+	# Fallback: try relative to the controller's parent.
+	var parent := controller.get_parent()
+	if parent:
+		node = parent.get_node_or_null(path)
+		if node:
+			return node
+	return null

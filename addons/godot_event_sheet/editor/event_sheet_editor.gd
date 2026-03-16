@@ -37,7 +37,9 @@ func edit_controller(controller: Node) -> void:
 		# Auto-create an EventSheet if none exists (1-step setup).
 		if _current_sheet == null:
 			_current_sheet = ESEventSheet.new()
+			_current_sheet.sheet_name = controller.name + " Events"
 			controller.set("event_sheet", _current_sheet)
+			_save_sheet()
 			print("EventSheet: Auto-created a new Event Sheet for '%s'. Ready to add events!" % controller.name)
 	else:
 		_current_sheet = null
@@ -418,8 +420,42 @@ func _create_action_row(action: ESAction, event: ESEventItem, action_index: int)
 func _mark_resource_modified() -> void:
 	if _current_sheet:
 		_current_sheet.emit_changed()
+		_save_sheet()
 		if editor_interface:
 			editor_interface.mark_scene_as_unsaved()
+
+
+## Persist the event sheet to an external .tres file.
+## This ensures the sheet survives across editor sessions, even if script
+## compilation fails temporarily (the .tres text file remains on disk).
+func _save_sheet() -> void:
+	if not _current_sheet or not _current_controller:
+		return
+
+	# Generate a resource path if the sheet doesn't have one yet.
+	if _current_sheet.resource_path.is_empty():
+		var dir_path := "res://event_sheets"
+		if not DirAccess.dir_exists_absolute(dir_path):
+			DirAccess.make_dir_recursive_absolute(dir_path)
+
+		var safe_name := _current_controller.name.to_lower().replace(" ", "_")
+		# Prefix with the scene file name for uniqueness (if available).
+		if _current_controller.owner:
+			var scene_path: String = _current_controller.owner.scene_file_path
+			if not scene_path.is_empty():
+				var scene_name := scene_path.get_file().get_basename().to_lower()
+				safe_name = scene_name + "_" + safe_name
+
+		var path := dir_path.path_join(safe_name + "_events.tres")
+		_current_sheet.resource_path = path
+
+	var err := ResourceSaver.save(_current_sheet)
+	if err != OK:
+		push_warning("EventSheet: Failed to save event sheet to '%s': %s" % [
+			_current_sheet.resource_path, error_string(err)])
+	elif _current_controller.get_meta("_es_last_save_path", "") != _current_sheet.resource_path:
+		_current_controller.set_meta("_es_last_save_path", _current_sheet.resource_path)
+		print("EventSheet: Saved event sheet to %s" % _current_sheet.resource_path)
 
 
 func _on_add_event() -> void:

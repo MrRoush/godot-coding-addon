@@ -174,7 +174,23 @@ func _resolve_target(controller: Node) -> Node:
 	if path_str == "$collider":
 		var meta_val = controller.get_meta(&"_es_last_collided_node", null)
 		return meta_val if meta_val is Node else null
-	return controller.get_node_or_null(target_path)
+
+	# Try the path relative to the controller first.
+	var target := controller.get_node_or_null(target_path)
+	if target:
+		return target
+
+	# Fallback: try relative to the controller's parent (e.g. user typed
+	# "Sprite" instead of "../Sprite" for a sibling node).
+	var parent := controller.get_parent()
+	if parent:
+		target = parent.get_node_or_null(target_path)
+		if target:
+			return target
+
+	push_warning("EventSheet: SetProperty target node not found at path '%s'. " \
+		+ "Try '../NodeName' for sibling nodes." % str(target_path))
+	return null
 
 
 ## Resolve {node_path:property} placeholders in a string value.

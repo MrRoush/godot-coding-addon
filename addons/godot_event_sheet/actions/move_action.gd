@@ -85,7 +85,17 @@ func _execute_2d(node: Node2D, dt: float, controller: Node) -> void:
 		MoveType.SET_VELOCITY:
 			if node is CharacterBody2D:
 				var body := node as CharacterBody2D
-				body.velocity = Vector2(x, y).normalized() * speed
+				var direction := Vector2(x, y)
+				if direction.length() > 0:
+					direction = direction.normalized()
+				# Only modify velocity axes that have a non-zero direction
+				# component.  This preserves gravity on velocity.y when
+				# doing horizontal movement and preserves horizontal
+				# velocity when jumping.
+				if x != 0.0:
+					body.velocity.x = direction.x * speed
+				if y != 0.0:
+					body.velocity.y = direction.y * speed
 				body.move_and_slide()
 
 
@@ -107,7 +117,15 @@ func _execute_3d(node: Node3D, dt: float, controller: Node) -> void:
 		MoveType.SET_VELOCITY:
 			if node is CharacterBody3D:
 				var body := node as CharacterBody3D
-				body.velocity = Vector3(x, y, 0).normalized() * speed
+				var direction := Vector3(x, y, 0)
+				if direction.length() > 0:
+					direction = direction.normalized()
+				# Only modify velocity axes that have a non-zero direction
+				# component (see 2D counterpart above for rationale).
+				if x != 0.0:
+					body.velocity.x = direction.x * speed
+				if y != 0.0:
+					body.velocity.y = direction.y * speed
 				body.move_and_slide()
 
 
@@ -118,7 +136,23 @@ func _resolve_target(controller: Node) -> Node:
 	if path_str == "$collider":
 		var meta_val = controller.get_meta(&"_es_last_collided_node", null)
 		return meta_val if meta_val is Node else null
-	return controller.get_node_or_null(target_path)
+
+	# Try the path relative to the controller first.
+	var target := controller.get_node_or_null(target_path)
+	if target:
+		return target
+
+	# Fallback: try relative to the controller's parent (e.g. user typed
+	# "Player" instead of "../Player" for a sibling node).
+	var parent := controller.get_parent()
+	if parent:
+		target = parent.get_node_or_null(target_path)
+		if target:
+			return target
+
+	push_warning("EventSheet: Move target node not found at path '%s'. " \
+		+ "Try '../NodeName' for sibling nodes." % str(target_path))
+	return null
 
 
 func _resolve_toward_node(controller: Node) -> Node:
