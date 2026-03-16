@@ -76,6 +76,7 @@ func _physics_process(delta: float) -> void:
 	if not _initialized:
 		return
 	_evaluate_events(_physics_events, delta)
+	_track_key_states()
 
 
 ## Register custom signals defined in the event sheet.
@@ -113,6 +114,7 @@ func _categorize_events() -> void:
 
 ## Determine which update loop an event belongs in.
 func _determine_event_category(event: ESEventItem) -> String:
+	var has_physics_cond: bool = false
 	for cond_res in event.conditions:
 		var cond := cond_res as ESCondition
 		if not cond:
@@ -127,6 +129,12 @@ func _determine_event_category(event: ESEventItem) -> String:
 		if cond is ESSignalCondition or cond is ESCollisionCondition \
 				or cond is ESTimerCondition or cond is ESButtonCondition:
 			return "signal"
+		# If the event contains a physics condition but no lifecycle condition,
+		# it should run in _physics_process so is_on_floor() is always fresh.
+		if cond is ESPhysicsCondition:
+			has_physics_cond = true
+	if has_physics_cond:
+		return "physics"
 	return "process"
 
 
@@ -138,20 +146,30 @@ func _setup_connections() -> void:
 		var event := event_res as ESEventItem
 		if not event or not event.enabled:
 			continue
+		_setup_event_connections(event)
 
-		for cond_res in event.conditions:
-			var cond := cond_res as ESCondition
-			if not cond:
-				continue
 
-			if cond is ESCollisionCondition:
-				_connect_collision(cond)
-			elif cond is ESSignalCondition:
-				_connect_signal_condition(cond)
-			elif cond is ESTimerCondition:
-				_setup_timer(cond)
-			elif cond is ESButtonCondition:
-				_connect_button(cond)
+## Recursively set up connections for an event and its sub-events.
+func _setup_event_connections(event: ESEventItem) -> void:
+	for cond_res in event.conditions:
+		var cond := cond_res as ESCondition
+		if not cond:
+			continue
+
+		if cond is ESCollisionCondition:
+			_connect_collision(cond)
+		elif cond is ESSignalCondition:
+			_connect_signal_condition(cond)
+		elif cond is ESTimerCondition:
+			_setup_timer(cond)
+		elif cond is ESButtonCondition:
+			_connect_button(cond)
+
+	# Recurse into sub-events.
+	for sub_res in event.sub_events:
+		var sub := sub_res as ESEventItem
+		if sub and sub.enabled:
+			_setup_event_connections(sub)
 
 
 ## Connect collision signals from the detector node.
@@ -306,6 +324,9 @@ func _evaluate_events(events: Array, delta: float) -> void:
 			if debug_mode:
 				print("EventSheet: Event '%s' triggered!" % event.event_name)
 			_execute_actions(event, delta)
+			# If this is a block event, evaluate sub-events now (they inherit this loop's context).
+			if event.is_block and event.sub_events.size() > 0:
+				_evaluate_events(event.sub_events, delta)
 
 
 ## Execute all actions in an event.
@@ -329,13 +350,23 @@ func _track_key_states() -> void:
 		var event := event_res as ESEventItem
 		if not event:
 			continue
-		for cond_res in event.conditions:
-			if cond_res is ESInputCondition:
-				var cond := cond_res as ESInputCondition
-				if not cond.action_or_key.is_empty() and not InputMap.has_action(cond.action_or_key):
-					var keycode := OS.find_keycode_from_string(cond.action_or_key)
-					if keycode != KEY_NONE:
-						set_meta("_es_prev_key_%d" % keycode, Input.is_key_pressed(keycode))
+		_track_event_key_states(event)
+
+
+## Recursively track key states for an event and its sub-events.
+func _track_event_key_states(event: ESEventItem) -> void:
+	for cond_res in event.conditions:
+		if cond_res is ESInputCondition:
+			var cond := cond_res as ESInputCondition
+			if not cond.action_or_key.is_empty() and not InputMap.has_action(cond.action_or_key):
+				var keycode := OS.find_keycode_from_string(cond.action_or_key)
+				if keycode != KEY_NONE:
+					set_meta("_es_prev_key_%d" % keycode, Input.is_key_pressed(keycode))
+	# Recurse into sub-events.
+	for sub_res in event.sub_events:
+		var sub := sub_res as ESEventItem
+		if sub:
+			_track_event_key_states(sub)
 
 
 ## Get all conditions from all events (utility).
@@ -345,6 +376,15 @@ func _get_all_conditions() -> Array:
 	for event_res in sheet.events:
 		var event := event_res as ESEventItem
 		if event:
-			for cond in event.conditions:
-				result.append(cond)
+			_collect_conditions(event, result)
 	return result
+
+
+## Recursively collect conditions from an event and all its sub-events.
+func _collect_conditions(event: ESEventItem, result: Array) -> void:
+	for cond in event.conditions:
+		result.append(cond)
+	for sub_res in event.sub_events:
+		var sub := sub_res as ESEventItem
+		if sub:
+			_collect_conditions(sub, result)

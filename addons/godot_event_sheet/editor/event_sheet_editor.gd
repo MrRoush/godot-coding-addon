@@ -151,6 +151,10 @@ func _create_event_row(event: ESEventItem, index: int) -> PanelContainer:
 	style.content_margin_right = 8
 	style.content_margin_top = 6
 	style.content_margin_bottom = 6
+	# Block events get a blue left-border accent.
+	if event.is_block:
+		style.border_width_left = 4
+		style.border_color = Color(0.3, 0.6, 1.0)
 	panel.add_theme_stylebox_override("panel", style)
 
 	var main_vbox := VBoxContainer.new()
@@ -209,6 +213,21 @@ func _create_event_row(event: ESEventItem, index: int) -> PanelContainer:
 	)
 	header.add_child(move_down_btn)
 
+	# Block toggle button.
+	var block_btn := Button.new()
+	if event.is_block:
+		block_btn.text = "⬛ Unblock"
+		block_btn.tooltip_text = "Remove block/container mode"
+	else:
+		block_btn.text = "⬡ Block"
+		block_btn.tooltip_text = "Make this event a block/container with sub-events"
+	block_btn.pressed.connect(func():
+		event.is_block = not event.is_block
+		_mark_resource_modified()
+		_refresh()
+	)
+	header.add_child(block_btn)
+
 	# Delete button.
 	var delete_btn := Button.new()
 	delete_btn.text = "✕"
@@ -235,6 +254,123 @@ func _create_event_row(event: ESEventItem, index: int) -> PanelContainer:
 
 	# Actions column.
 	var action_column := _create_actions_column(event, index)
+	action_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	columns.add_child(action_column)
+
+	# -- Sub-events section (only visible when is_block) --
+	if event.is_block:
+		var sub_sep := HSeparator.new()
+		main_vbox.add_child(sub_sep)
+
+		var sub_margin := MarginContainer.new()
+		sub_margin.add_theme_constant_override("margin_left", 24)
+		main_vbox.add_child(sub_margin)
+
+		var sub_vbox := VBoxContainer.new()
+		sub_vbox.add_theme_constant_override("separation", 4)
+		sub_margin.add_child(sub_vbox)
+
+		for i in range(event.sub_events.size()):
+			var sub_event := event.sub_events[i] as ESEventItem
+			if sub_event:
+				var sub_row := _create_sub_event_row(sub_event, event, i)
+				sub_vbox.add_child(sub_row)
+
+		# Add Sub-Event button.
+		var add_sub_btn := Button.new()
+		add_sub_btn.text = "↳ + Add Sub-Event"
+		add_sub_btn.tooltip_text = "Add a sub-event that runs when this block's conditions pass"
+		add_sub_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		add_sub_btn.pressed.connect(func(): _on_add_sub_event(event))
+		sub_vbox.add_child(add_sub_btn)
+
+	return panel
+
+
+## Create a visual row for a sub-event inside a block.
+func _create_sub_event_row(sub_event: ESEventItem, parent_event: ESEventItem, sub_index: int) -> PanelContainer:
+	var panel := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.20, 0.22, 0.28, 1.0)
+	style.corner_radius_top_left = 3
+	style.corner_radius_top_right = 3
+	style.corner_radius_bottom_left = 3
+	style.corner_radius_bottom_right = 3
+	style.content_margin_left = 8
+	style.content_margin_right = 8
+	style.content_margin_top = 5
+	style.content_margin_bottom = 5
+	panel.add_theme_stylebox_override("panel", style)
+
+	var main_vbox := VBoxContainer.new()
+	panel.add_child(main_vbox)
+
+	# -- Sub-event header --
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 8)
+	main_vbox.add_child(header)
+
+	# Hierarchy prefix.
+	var prefix := Label.new()
+	prefix.text = "↳"
+	prefix.add_theme_color_override("font_color", Color(0.5, 0.7, 1.0))
+	header.add_child(prefix)
+
+	# Enable checkbox.
+	var enabled_check := CheckBox.new()
+	enabled_check.button_pressed = sub_event.enabled
+	enabled_check.tooltip_text = "Enable/Disable this sub-event"
+	enabled_check.toggled.connect(func(toggled: bool):
+		sub_event.enabled = toggled
+		_mark_resource_modified()
+	)
+	header.add_child(enabled_check)
+
+	# Sub-event name.
+	var name_edit := LineEdit.new()
+	name_edit.text = sub_event.event_name
+	name_edit.placeholder_text = "Sub-Event Name"
+	name_edit.custom_minimum_size.x = 150
+	name_edit.text_submitted.connect(func(new_text: String):
+		sub_event.event_name = new_text
+		_mark_resource_modified()
+	)
+	header.add_child(name_edit)
+
+	# Spacer.
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(spacer)
+
+	# Delete button.
+	var delete_btn := Button.new()
+	delete_btn.text = "✕"
+	delete_btn.tooltip_text = "Delete this sub-event"
+	delete_btn.pressed.connect(func():
+		parent_event.remove_sub_event(sub_index)
+		_mark_resource_modified()
+		_refresh()
+	)
+	header.add_child(delete_btn)
+
+	# -- Conditions & Actions columns --
+	var columns := HBoxContainer.new()
+	columns.add_theme_constant_override("separation", 12)
+	main_vbox.add_child(columns)
+
+	# Conditions column. Pass -1 as event_index: the parameter is unused inside
+	# _create_conditions_column and _create_actions_column (it is only present for
+	# future extensibility), so -1 is safe for sub-event rows.
+	var cond_column := _create_conditions_column(sub_event, -1)
+	cond_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	columns.add_child(cond_column)
+
+	# Vertical separator.
+	var vsep := VSeparator.new()
+	columns.add_child(vsep)
+
+	# Actions column.
+	var action_column := _create_actions_column(sub_event, -1)
 	action_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	columns.add_child(action_column)
 
@@ -474,6 +610,25 @@ func _on_add_event() -> void:
 			event.add_condition(cond)
 		if action:
 			event.add_action(action)
+		_mark_resource_modified()
+		_refresh()
+	)
+
+
+func _on_add_sub_event(parent_event: ESEventItem) -> void:
+	var dialog := AddEventDialog.create()
+	add_child(dialog)
+	dialog.popup_centered(Vector2i(800, 600))
+	dialog.confirmed.connect(func():
+		var sub_event := ESEventItem.new()
+		sub_event.event_name = "Sub-Event %d" % (parent_event.sub_events.size() + 1)
+		var cond: ESCondition = dialog.get_selected_condition()
+		var action: ESAction = dialog.get_selected_action()
+		if cond:
+			sub_event.add_condition(cond)
+		if action:
+			sub_event.add_action(action)
+		parent_event.add_sub_event(sub_event)
 		_mark_resource_modified()
 		_refresh()
 	)

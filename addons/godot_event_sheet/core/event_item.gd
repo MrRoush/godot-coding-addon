@@ -24,6 +24,16 @@ enum LogicMode {
 ## Actions executed (in order) when the conditions are met.
 @export var actions: Array[Resource] = []  # Array of ESAction
 
+## If true, this event acts as a block/group container.
+## Its own conditions gate whether its sub_events are evaluated.
+## Its own actions (if any) run first when conditions pass, then sub_events are evaluated.
+@export var is_block: bool = false
+
+## Child events nested under this block.
+## Only evaluated when this block's own conditions all pass.
+## Sub-events inherit the parent block's execution loop (process vs physics).
+@export var sub_events: Array[Resource] = []  # Array of ESEventItem
+
 
 ## Add a condition and return it.
 func add_condition(condition: Resource) -> void:
@@ -48,4 +58,17 @@ func add_action(action: Resource) -> void:
 func remove_action(index: int) -> void:
 	if index >= 0 and index < actions.size():
 		actions.remove_at(index)
+		emit_changed()
+
+
+## Add a sub-event under this block.
+func add_sub_event(item: Resource) -> void:
+	sub_events.append(item)
+	emit_changed()
+
+
+## Remove a sub-event at the given index.
+func remove_sub_event(index: int) -> void:
+	if index >= 0 and index < sub_events.size():
+		sub_events.remove_at(index)
 		emit_changed()
