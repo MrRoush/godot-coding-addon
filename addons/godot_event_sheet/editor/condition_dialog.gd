@@ -647,18 +647,20 @@ func _populate_property_dropdown(dropdown: OptionButton, custom_edit: LineEdit,
 
 	dropdown.selected = selected_idx
 
-	# Disconnect all previous item_selected connections to avoid stacking.
+	# Disconnect all previous item_selected connections then reconnect.
+	# (Safe here because prop_dropdown is owned exclusively by this function.)
 	for conn in dropdown.item_selected.get_connections():
 		dropdown.item_selected.disconnect(conn["callable"])
 	dropdown.item_selected.connect(func(sel_idx: int):
 		_on_prop_dropdown_item_selected(sel_idx, dropdown, custom_edit, obj, prop)
 	)
 
-	# Only connect text_changed once (on first population when custom_edit is fresh).
-	if not custom_edit.text_changed.get_connections().size():
-		custom_edit.text_changed.connect(func(new_text: String):
-			obj.set(prop, new_text)
-		)
+	# Disconnect and reconnect text_changed to avoid duplicate handlers on repopulation.
+	for conn in custom_edit.text_changed.get_connections():
+		custom_edit.text_changed.disconnect(conn["callable"])
+	custom_edit.text_changed.connect(func(new_text: String):
+		obj.set(prop, new_text)
+	)
 
 
 func _on_prop_dropdown_item_selected(idx: int, dropdown: OptionButton,

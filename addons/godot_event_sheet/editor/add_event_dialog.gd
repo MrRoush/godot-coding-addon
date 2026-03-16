@@ -256,7 +256,7 @@ func _on_trigger_selected() -> void:
 
 	# Free the previous helper now that its UI children are being removed.
 	if _cond_helper:
-		_cond_helper.free()
+		_cond_helper.queue_free()
 		_cond_helper = null
 
 	# Use condition_dialog factory to create the condition and build its UI.
@@ -282,7 +282,7 @@ func _on_reaction_selected() -> void:
 
 	# Free the previous helper now that its UI children are being removed.
 	if _action_helper:
-		_action_helper.free()
+		_action_helper.queue_free()
 		_action_helper = null
 
 	# Use action_dialog factory to create the action and build its UI.
@@ -298,8 +298,8 @@ func _on_reaction_selected() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
 		if _cond_helper:
-			_cond_helper.free()
+			_cond_helper.queue_free()
 			_cond_helper = null
 		if _action_helper:
-			_action_helper.free()
+			_action_helper.queue_free()
 			_action_helper = null
