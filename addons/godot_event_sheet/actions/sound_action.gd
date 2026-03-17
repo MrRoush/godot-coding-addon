@@ -1,4 +1,5 @@
 @tool
+class_name ESSoundAction
 extends ESAction
 ## Action that plays or stops an AudioStreamPlayer.
 

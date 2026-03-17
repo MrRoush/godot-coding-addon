@@ -1,4 +1,5 @@
 @tool
+class_name ESEmitSignalAction
 extends ESAction
 ## Action that emits a signal on a target node.
 ## Works with both built-in signals and custom signals defined in the EventSheet.

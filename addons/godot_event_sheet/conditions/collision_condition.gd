@@ -1,4 +1,5 @@
 @tool
+class_name ESCollisionCondition
 extends ESCondition
 ## Condition that detects collisions using Area2D/Area3D or CharacterBody signals.
 ## The EventController automatically connects collision signals at runtime.

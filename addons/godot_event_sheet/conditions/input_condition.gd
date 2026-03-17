@@ -1,4 +1,5 @@
 @tool
+class_name ESInputCondition
 extends ESCondition
 ## Condition that checks for keyboard or action input.
 

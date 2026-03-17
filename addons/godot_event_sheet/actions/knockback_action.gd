@@ -1,4 +1,5 @@
 @tool
+class_name ESKnockbackAction
 extends ESAction
 ## Action that applies a knockback push to a target node, moving it away from
 ## a source node. Ideal for hit reactions, weapon strikes, and enemy knockback.

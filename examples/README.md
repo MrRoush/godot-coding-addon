@@ -2,10 +2,10 @@
 
 This directory contains example scenes that demonstrate how to use the Godot Event Sheet addon.
 
-**Note:** Condition and action scripts do not use `class_name` to avoid
-"hides a global script class" reload errors.  Example scripts therefore
-reference them via `preload()` constants — the same pattern used by the
-editor dialogs and the runtime controller.
+**Note:** All condition and action scripts declare `class_name` (e.g.
+`ESCollisionCondition`, `ESMoveAction`) so they can be referenced directly
+from any script. The example scripts also include `preload()` constants for
+explicitness, but these are optional.
 
 ## Example Descriptions
 

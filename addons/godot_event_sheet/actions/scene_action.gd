@@ -1,4 +1,5 @@
 @tool
+class_name ESSceneAction
 extends ESAction
 ## Action for creating (instantiating) or destroying nodes, changing scenes, or
 ## showing/hiding nodes.

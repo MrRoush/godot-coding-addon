@@ -1,4 +1,5 @@
 @tool
+class_name ESSignalCondition
 extends ESCondition
 ## Condition that listens for a signal on a target node.
 ## The EventController connects the signal at startup.

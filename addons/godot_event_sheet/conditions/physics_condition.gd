@@ -1,4 +1,5 @@
 @tool
+class_name ESPhysicsCondition
 extends ESCondition
 ## Condition that checks physics state of a CharacterBody2D or CharacterBody3D node.
 ## Useful for platformer mechanics (e.g., only jump when on the floor).

@@ -1,9 +1,9 @@
 extends Node
 ## Example: How to set up player movement with the Event Sheet addon.
 ##
-## NOTE: Condition and action scripts do not declare class_name, so we
-## reference them via preload() constants – the same pattern used by the
-## editor dialogs and the runtime controller.
+## Condition and action scripts declare class_name, so they can be referenced
+## directly (e.g. ESMoveAction.new()). The preload() constants below are kept
+## for explicitness but are no longer strictly required.
 
 const ESLifecycleCondition := preload("res://addons/godot_event_sheet/conditions/lifecycle_condition.gd")
 const ESInputCondition := preload("res://addons/godot_event_sheet/conditions/input_condition.gd")
