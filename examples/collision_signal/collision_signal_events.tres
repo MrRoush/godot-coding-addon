@@ -1,0 +1,73 @@
+[gd_resource type="Resource" script_class="ESEventSheet" load_steps=19 format=3]
+
+[ext_resource type="Script" path="res://addons/godot_event_sheet/core/event_sheet.gd" id="sheet_script"]
+[ext_resource type="Script" path="res://addons/godot_event_sheet/core/event_item.gd" id="item_script"]
+[ext_resource type="Script" path="res://addons/godot_event_sheet/conditions/lifecycle_condition.gd" id="lifecycle_script"]
+[ext_resource type="Script" path="res://addons/godot_event_sheet/conditions/input_condition.gd" id="input_script"]
+[ext_resource type="Script" path="res://addons/godot_event_sheet/conditions/collision_condition.gd" id="collision_script"]
+[ext_resource type="Script" path="res://addons/godot_event_sheet/actions/move_action.gd" id="move_script"]
+[ext_resource type="Script" path="res://addons/godot_event_sheet/actions/print_action.gd" id="print_script"]
+
+[sub_resource type="Resource" id="cond_right_lifecycle"]
+script = ExtResource("lifecycle_script")
+lifecycle_type = 1
+
+[sub_resource type="Resource" id="cond_right_input"]
+script = ExtResource("input_script")
+input_type = 2
+action_or_key = "ui_right"
+
+[sub_resource type="Resource" id="action_right_move"]
+script = ExtResource("move_script")
+move_type = 0
+x = 1.0
+y = 0.0
+speed = 200.0
+
+[sub_resource type="Resource" id="event_right"]
+script = ExtResource("item_script")
+event_name = "Move Right"
+conditions = Array[Resource]([SubResource("cond_right_lifecycle"), SubResource("cond_right_input")])
+actions = Array[Resource]([SubResource("action_right_move")])
+
+[sub_resource type="Resource" id="cond_left_lifecycle"]
+script = ExtResource("lifecycle_script")
+lifecycle_type = 1
+
+[sub_resource type="Resource" id="cond_left_input"]
+script = ExtResource("input_script")
+input_type = 2
+action_or_key = "ui_left"
+
+[sub_resource type="Resource" id="action_left_move"]
+script = ExtResource("move_script")
+move_type = 0
+x = -1.0
+y = 0.0
+speed = 200.0
+
+[sub_resource type="Resource" id="event_left"]
+script = ExtResource("item_script")
+event_name = "Move Left"
+conditions = Array[Resource]([SubResource("cond_left_lifecycle"), SubResource("cond_left_input")])
+actions = Array[Resource]([SubResource("action_left_move")])
+
+[sub_resource type="Resource" id="cond_collision"]
+script = ExtResource("collision_script")
+collision_type = 2
+filter_group = "coins"
+
+[sub_resource type="Resource" id="action_collect_print"]
+script = ExtResource("print_script")
+message = "Coin collected by {name}!"
+
+[sub_resource type="Resource" id="event_collect"]
+script = ExtResource("item_script")
+event_name = "Collect Coin"
+conditions = Array[Resource]([SubResource("cond_collision")])
+actions = Array[Resource]([SubResource("action_collect_print")])
+
+[resource]
+script = ExtResource("sheet_script")
+sheet_name = "Collision & Signals"
+events = Array[Resource]([SubResource("event_right"), SubResource("event_left"), SubResource("event_collect")])

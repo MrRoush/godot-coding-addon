@@ -1,0 +1,67 @@
+[gd_resource type="Resource" script_class="ESEventSheet" load_steps=18 format=3]
+
+[ext_resource type="Script" path="res://addons/godot_event_sheet/core/event_sheet.gd" id="sheet_script"]
+[ext_resource type="Script" path="res://addons/godot_event_sheet/core/event_item.gd" id="item_script"]
+[ext_resource type="Script" path="res://addons/godot_event_sheet/conditions/lifecycle_condition.gd" id="lifecycle_script"]
+[ext_resource type="Script" path="res://addons/godot_event_sheet/conditions/timer_condition.gd" id="timer_script"]
+[ext_resource type="Script" path="res://addons/godot_event_sheet/conditions/property_condition.gd" id="property_script"]
+[ext_resource type="Script" path="res://addons/godot_event_sheet/actions/print_action.gd" id="print_script"]
+[ext_resource type="Script" path="res://addons/godot_event_sheet/actions/set_property_action.gd" id="setprop_script"]
+
+[sub_resource type="Resource" id="cond_ready"]
+script = ExtResource("lifecycle_script")
+lifecycle_type = 0
+
+[sub_resource type="Resource" id="action_welcome"]
+script = ExtResource("print_script")
+message = "Game started! The icon will rotate every 2 seconds."
+
+[sub_resource type="Resource" id="event_ready"]
+script = ExtResource("item_script")
+event_name = "Welcome Message"
+conditions = Array[Resource]([SubResource("cond_ready")])
+actions = Array[Resource]([SubResource("action_welcome")])
+
+[sub_resource type="Resource" id="cond_timer"]
+script = ExtResource("timer_script")
+wait_time = 2.0
+one_shot = false
+
+[sub_resource type="Resource" id="action_rotate"]
+script = ExtResource("setprop_script")
+property_name = "rotation"
+value = "0.5"
+set_mode = 1
+
+[sub_resource type="Resource" id="action_rotate_print"]
+script = ExtResource("print_script")
+message = "Rotated! Current rotation: {rotation}"
+
+[sub_resource type="Resource" id="event_timer"]
+script = ExtResource("item_script")
+event_name = "Rotate Periodically"
+conditions = Array[Resource]([SubResource("cond_timer")])
+actions = Array[Resource]([SubResource("action_rotate"), SubResource("action_rotate_print")])
+
+[sub_resource type="Resource" id="cond_offscreen"]
+script = ExtResource("property_script")
+property_name = "position.x"
+compare_op = 2
+compare_value = "600"
+
+[sub_resource type="Resource" id="action_reset"]
+script = ExtResource("setprop_script")
+property_name = "position.x"
+value = "100"
+set_mode = 0
+
+[sub_resource type="Resource" id="event_wrap"]
+script = ExtResource("item_script")
+event_name = "Wrap Position"
+conditions = Array[Resource]([SubResource("cond_offscreen")])
+actions = Array[Resource]([SubResource("action_reset")])
+
+[resource]
+script = ExtResource("sheet_script")
+sheet_name = "Timers & Properties"
+events = Array[Resource]([SubResource("event_ready"), SubResource("event_timer"), SubResource("event_wrap")])

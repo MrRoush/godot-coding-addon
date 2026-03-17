@@ -1,0 +1,45 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Texture2D" path="res://addons/godot_event_sheet/icons/icon.svg" id="icon"]
+[ext_resource type="Script" path="res://addons/godot_event_sheet/runtime/event_controller.gd" id="controller_script"]
+[ext_resource type="Resource" path="res://examples/collision_signal/collision_signal_events.tres" id="event_sheet"]
+
+[sub_resource type="RectangleShape2D" id="player_shape"]
+size = Vector2(64, 64)
+
+[sub_resource type="RectangleShape2D" id="coin_shape"]
+size = Vector2(64, 64)
+
+[node name="CollisionSignalExample" type="Node2D"]
+
+[node name="Instructions" type="Label" parent="."]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 700.0
+offset_bottom = 60.0
+text = "Use Left/Right Arrow Keys to move the blue icon into the yellow coin."
+
+[node name="Player" type="Area2D" parent="."]
+position = Vector2(200, 300)
+
+[node name="Sprite2D" type="Sprite2D" parent="Player"]
+scale = Vector2(2, 2)
+texture = ExtResource("icon")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Player"]
+shape = SubResource("player_shape")
+
+[node name="EventController" type="Node" parent="Player"]
+script = ExtResource("controller_script")
+event_sheet = ExtResource("event_sheet")
+
+[node name="Coin" type="Area2D" parent="." groups=["coins"]]
+position = Vector2(600, 300)
+
+[node name="Sprite2D" type="Sprite2D" parent="Coin"]
+scale = Vector2(2, 2)
+modulate = Color(1, 0.9, 0.2, 1)
+texture = ExtResource("icon")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Coin"]
+shape = SubResource("coin_shape")

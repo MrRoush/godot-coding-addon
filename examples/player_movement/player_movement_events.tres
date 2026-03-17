@@ -1,0 +1,100 @@
+[gd_resource type="Resource" script_class="ESEventSheet" load_steps=22 format=3]
+
+[ext_resource type="Script" path="res://addons/godot_event_sheet/core/event_sheet.gd" id="sheet_script"]
+[ext_resource type="Script" path="res://addons/godot_event_sheet/core/event_item.gd" id="item_script"]
+[ext_resource type="Script" path="res://addons/godot_event_sheet/conditions/lifecycle_condition.gd" id="lifecycle_script"]
+[ext_resource type="Script" path="res://addons/godot_event_sheet/conditions/input_condition.gd" id="input_script"]
+[ext_resource type="Script" path="res://addons/godot_event_sheet/actions/move_action.gd" id="move_script"]
+
+[sub_resource type="Resource" id="cond_right_lifecycle"]
+script = ExtResource("lifecycle_script")
+lifecycle_type = 1
+
+[sub_resource type="Resource" id="cond_right_input"]
+script = ExtResource("input_script")
+input_type = 2
+action_or_key = "ui_right"
+
+[sub_resource type="Resource" id="action_right_move"]
+script = ExtResource("move_script")
+move_type = 0
+x = 1.0
+y = 0.0
+speed = 200.0
+
+[sub_resource type="Resource" id="event_right"]
+script = ExtResource("item_script")
+event_name = "Move Right"
+conditions = Array[Resource]([SubResource("cond_right_lifecycle"), SubResource("cond_right_input")])
+actions = Array[Resource]([SubResource("action_right_move")])
+
+[sub_resource type="Resource" id="cond_left_lifecycle"]
+script = ExtResource("lifecycle_script")
+lifecycle_type = 1
+
+[sub_resource type="Resource" id="cond_left_input"]
+script = ExtResource("input_script")
+input_type = 2
+action_or_key = "ui_left"
+
+[sub_resource type="Resource" id="action_left_move"]
+script = ExtResource("move_script")
+move_type = 0
+x = -1.0
+y = 0.0
+speed = 200.0
+
+[sub_resource type="Resource" id="event_left"]
+script = ExtResource("item_script")
+event_name = "Move Left"
+conditions = Array[Resource]([SubResource("cond_left_lifecycle"), SubResource("cond_left_input")])
+actions = Array[Resource]([SubResource("action_left_move")])
+
+[sub_resource type="Resource" id="cond_down_lifecycle"]
+script = ExtResource("lifecycle_script")
+lifecycle_type = 1
+
+[sub_resource type="Resource" id="cond_down_input"]
+script = ExtResource("input_script")
+input_type = 2
+action_or_key = "ui_down"
+
+[sub_resource type="Resource" id="action_down_move"]
+script = ExtResource("move_script")
+move_type = 0
+x = 0.0
+y = 1.0
+speed = 200.0
+
+[sub_resource type="Resource" id="event_down"]
+script = ExtResource("item_script")
+event_name = "Move Down"
+conditions = Array[Resource]([SubResource("cond_down_lifecycle"), SubResource("cond_down_input")])
+actions = Array[Resource]([SubResource("action_down_move")])
+
+[sub_resource type="Resource" id="cond_up_lifecycle"]
+script = ExtResource("lifecycle_script")
+lifecycle_type = 1
+
+[sub_resource type="Resource" id="cond_up_input"]
+script = ExtResource("input_script")
+input_type = 2
+action_or_key = "ui_up"
+
+[sub_resource type="Resource" id="action_up_move"]
+script = ExtResource("move_script")
+move_type = 0
+x = 0.0
+y = -1.0
+speed = 200.0
+
+[sub_resource type="Resource" id="event_up"]
+script = ExtResource("item_script")
+event_name = "Move Up"
+conditions = Array[Resource]([SubResource("cond_up_lifecycle"), SubResource("cond_up_input")])
+actions = Array[Resource]([SubResource("action_up_move")])
+
+[resource]
+script = ExtResource("sheet_script")
+sheet_name = "Player Movement"
+events = Array[Resource]([SubResource("event_right"), SubResource("event_left"), SubResource("event_down"), SubResource("event_up")])
