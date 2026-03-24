@@ -104,12 +104,14 @@ func _move_along_path(mover: Node, agent: NavigationAgent2D, delta: float) -> vo
 
 
 func _get_or_create_agent(node: Node) -> NavigationAgent2D:
+	# Reuse any existing NavigationAgent2D child (regardless of name).
 	for child in node.get_children():
 		if child is NavigationAgent2D:
 			return child as NavigationAgent2D
 	# No agent found — create one automatically.
 	var agent := NavigationAgent2D.new()
-	agent.name = "ESNavAgent"
+	# Use a unique name to avoid collisions with user-placed agents on the same node.
+	agent.name = &"ESNavAgent"
 	agent.path_desired_distance = arrival_distance
 	agent.target_desired_distance = arrival_distance
 	node.add_child(agent)

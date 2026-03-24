@@ -37,6 +37,8 @@ enum RandomOp {
 
 ## Maximum Y boundary for RANDOM_POSITION.
 @export var max_y: float = 600.0
+## NOTE: RANDOM_POSITION is designed for 2D games. When the target is a Node3D
+## the position is applied to the XY plane with Z set to 0.0.
 
 
 func get_summary() -> String:

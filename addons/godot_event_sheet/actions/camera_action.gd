@@ -104,8 +104,9 @@ func _do_follow(controller: Node, camera: Camera2D, delta: float) -> void:
 
 
 func _do_shake(controller: Node, camera: Camera2D) -> void:
+	const SHAKE_INTERVAL := 0.05
 	var tween := controller.create_tween()
-	var steps := maxi(1, int(shake_duration / 0.05))
+	var steps := maxi(1, int(shake_duration / SHAKE_INTERVAL))
 	for _i in steps:
 		tween.tween_callback(func():
 			camera.offset = Vector2(
@@ -113,7 +114,7 @@ func _do_shake(controller: Node, camera: Camera2D) -> void:
 				randf_range(-shake_intensity, shake_intensity)
 			)
 		)
-		tween.tween_interval(0.05)
+		tween.tween_interval(SHAKE_INTERVAL)
 	tween.tween_callback(func(): camera.offset = Vector2.ZERO)
 
 
