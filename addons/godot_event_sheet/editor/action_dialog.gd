@@ -12,6 +12,11 @@ const ESSceneAction := preload("res://addons/godot_event_sheet/actions/scene_act
 const ESSoundAction := preload("res://addons/godot_event_sheet/actions/sound_action.gd")
 const ESPrintAction := preload("res://addons/godot_event_sheet/actions/print_action.gd")
 const ESGravityAction := preload("res://addons/godot_event_sheet/actions/gravity_action.gd")
+const ESRotateAction := preload("res://addons/godot_event_sheet/actions/rotate_action.gd")
+const ESCameraAction := preload("res://addons/godot_event_sheet/actions/camera_action.gd")
+const ESPathfindingAction := preload("res://addons/godot_event_sheet/actions/pathfinding_action.gd")
+const ESRandomAction := preload("res://addons/godot_event_sheet/actions/random_action.gd")
+const ESGroupAction := preload("res://addons/godot_event_sheet/actions/group_action.gd")
 const PropertyHints := preload("res://addons/godot_event_sheet/editor/property_hints.gd")
 
 var _action_list: Tree
@@ -46,6 +51,8 @@ const ACTION_CATEGORIES := [
 			{"label": "Movement: Move Toward Point", "key": "move_toward"},
 			{"label": "Movement: Move Toward Node (dynamic)", "key": "move_toward_node"},
 			{"label": "Movement: Set Velocity (Physics)", "key": "move_velocity"},
+			{"label": "Movement: Rotate / Aim", "key": "rotate"},
+			{"label": "Movement: Pathfind (A*)", "key": "pathfind"},
 			{"label": "Physics: Apply Gravity", "key": "gravity"},
 			{"label": "Movement: Apply Knockback", "key": "knockback"},
 		]
@@ -93,6 +100,26 @@ const ACTION_CATEGORIES := [
 			{"label": "Debug: Print Message", "key": "debug_print"},
 		]
 	},
+	{
+		"label": "📷 Camera",
+		"items": [
+			{"label": "Camera: Follow Target", "key": "camera_follow"},
+			{"label": "Camera: Set Zoom", "key": "camera_zoom"},
+			{"label": "Camera: Shake", "key": "camera_shake"},
+			{"label": "Camera: Reset Zoom", "key": "camera_reset_zoom"},
+			{"label": "Camera: Set Offset", "key": "camera_offset"},
+		]
+	},
+	{
+		"label": "🎲 Utility",
+		"items": [
+			{"label": "Utility: Random Float Value", "key": "random_float"},
+			{"label": "Utility: Random Int Value", "key": "random_int"},
+			{"label": "Utility: Random Position", "key": "random_position"},
+			{"label": "Utility: Add to Group", "key": "group_add"},
+			{"label": "Utility: Remove from Group", "key": "group_remove"},
+		]
+	},
 ]
 
 # Flat map kept for backward compat (used by add_event_dialog key lookup).
@@ -122,6 +149,18 @@ const ACTION_TYPES := {
 	"Audio: Stop Sound": "sound_stop",
 	"Physics: Apply Gravity": "gravity",
 	"Debug: Print Message": "debug_print",
+	"Movement: Rotate / Aim": "rotate",
+	"Movement: Pathfind (A*)": "pathfind",
+	"Camera: Follow Target": "camera_follow",
+	"Camera: Set Zoom": "camera_zoom",
+	"Camera: Shake": "camera_shake",
+	"Camera: Reset Zoom": "camera_reset_zoom",
+	"Camera: Set Offset": "camera_offset",
+	"Utility: Random Float Value": "random_float",
+	"Utility: Random Int Value": "random_int",
+	"Utility: Random Position": "random_position",
+	"Utility: Add to Group": "group_add",
+	"Utility: Remove from Group": "group_remove",
 }
 
 
@@ -303,6 +342,50 @@ func create_action_from_key(key: String) -> ESAction:
 			return ESPrintAction.new()
 		"gravity":
 			return ESGravityAction.new()
+		"rotate":
+			return ESRotateAction.new()
+		"pathfind":
+			return ESPathfindingAction.new()
+		"camera_follow":
+			var a := ESCameraAction.new()
+			a.operation = ESCameraAction.CameraOp.FOLLOW_TARGET
+			return a
+		"camera_zoom":
+			var a := ESCameraAction.new()
+			a.operation = ESCameraAction.CameraOp.SET_ZOOM
+			return a
+		"camera_shake":
+			var a := ESCameraAction.new()
+			a.operation = ESCameraAction.CameraOp.SHAKE
+			return a
+		"camera_reset_zoom":
+			var a := ESCameraAction.new()
+			a.operation = ESCameraAction.CameraOp.RESET_ZOOM
+			return a
+		"camera_offset":
+			var a := ESCameraAction.new()
+			a.operation = ESCameraAction.CameraOp.SET_OFFSET
+			return a
+		"random_float":
+			var a := ESRandomAction.new()
+			a.operation = ESRandomAction.RandomOp.SET_RANDOM_FLOAT
+			return a
+		"random_int":
+			var a := ESRandomAction.new()
+			a.operation = ESRandomAction.RandomOp.SET_RANDOM_INT
+			return a
+		"random_position":
+			var a := ESRandomAction.new()
+			a.operation = ESRandomAction.RandomOp.RANDOM_POSITION
+			return a
+		"group_add":
+			var a := ESGroupAction.new()
+			a.operation = ESGroupAction.GroupOp.ADD_TO_GROUP
+			return a
+		"group_remove":
+			var a := ESGroupAction.new()
+			a.operation = ESGroupAction.GroupOp.REMOVE_FROM_GROUP
+			return a
 	return null
 
 
@@ -417,6 +500,74 @@ func build_property_fields(container: VBoxContainer, action: ESAction) -> void:
 		_add_float_field(container, "Gravity:", action, "gravity")
 		_add_float_field(container, "Max Fall Speed:", action, "max_fall_speed")
 		_add_bool_field(container, "Call move_and_slide():", action, "call_move_and_slide")
+
+	elif action is ESRotateAction:
+		_add_node_path_field(container, "Target Node:", action, "target_path",
+			"Node to rotate (leave empty for parent, or $collider)")
+		_add_enum_field(container, "Rotate Type:", action, "rotate_type",
+			["Look At Mouse", "Look At Node", "Set Rotation", "Rotate By"])
+		if action.rotate_type == ESRotateAction.RotateType.LOOK_AT_NODE:
+			_add_node_path_field(container, "Face Node:", action, "look_at_node_path",
+				"Node to face (e.g., ../Player)")
+		if action.rotate_type == ESRotateAction.RotateType.SET_ROTATION or \
+				action.rotate_type == ESRotateAction.RotateType.ROTATE_BY:
+			_add_float_field(container, "Angle (degrees):", action, "angle_degrees")
+		if action.rotate_type == ESRotateAction.RotateType.ROTATE_BY:
+			_add_bool_field(container, "Use Delta Time:", action, "use_delta")
+		_add_float_field(container, "Rotation Offset (°):", action, "rotation_offset_degrees")
+		_add_float_field(container, "Smooth Speed (°/s, 0=instant):", action, "rotation_speed")
+
+	elif action is ESPathfindingAction:
+		_add_enum_field(container, "Operation:", action, "operation",
+			["Set Target Node", "Set Target Position", "Move Along Path", "Stop"])
+		_add_node_path_field(container, "Mover Node:", action, "target_path",
+			"Node to move (leave empty for parent)")
+		if action.operation == ESPathfindingAction.PathfindingOp.SET_TARGET_NODE:
+			_add_node_path_field(container, "Destination Node:", action, "destination_node_path",
+				"Node to navigate toward (e.g., ../Player)")
+		if action.operation == ESPathfindingAction.PathfindingOp.SET_TARGET_POS:
+			_add_float_field(container, "Destination X:", action, "destination_x")
+			_add_float_field(container, "Destination Y:", action, "destination_y")
+		if action.operation == ESPathfindingAction.PathfindingOp.MOVE_ALONG_PATH:
+			_add_float_field(container, "Speed:", action, "speed")
+			_add_float_field(container, "Arrival Distance:", action, "arrival_distance")
+
+	elif action is ESCameraAction:
+		_add_node_path_field(container, "Camera Node:", action, "camera_path",
+			"Camera2D node (leave empty to auto-find)")
+		match action.operation:
+			ESCameraAction.CameraOp.FOLLOW_TARGET:
+				_add_node_path_field(container, "Follow Target:", action, "follow_target_path",
+					"Node for camera to follow (leave empty for parent)")
+				_add_float_field(container, "Follow Speed (0=instant):", action, "follow_speed")
+			ESCameraAction.CameraOp.SET_ZOOM:
+				_add_float_field(container, "Zoom Level:", action, "zoom_level")
+			ESCameraAction.CameraOp.SHAKE:
+				_add_float_field(container, "Shake Intensity (px):", action, "shake_intensity")
+				_add_float_field(container, "Shake Duration (s):", action, "shake_duration")
+			ESCameraAction.CameraOp.SET_OFFSET:
+				_add_float_field(container, "Offset X:", action, "offset_x")
+				_add_float_field(container, "Offset Y:", action, "offset_y")
+
+	elif action is ESRandomAction:
+		_add_node_path_field(container, "Target Node:", action, "target_path",
+			"Node to modify (leave empty for parent)")
+		if action.operation != ESRandomAction.RandomOp.RANDOM_POSITION:
+			_add_string_field(container, "Property Name:", action, "property_name",
+				"e.g., speed, scale.x, health")
+			_add_float_field(container, "Min Value:", action, "min_value")
+			_add_float_field(container, "Max Value:", action, "max_value")
+		else:
+			_add_float_field(container, "Min X:", action, "min_x")
+			_add_float_field(container, "Max X:", action, "max_x")
+			_add_float_field(container, "Min Y:", action, "min_y")
+			_add_float_field(container, "Max Y:", action, "max_y")
+
+	elif action is ESGroupAction:
+		_add_node_path_field(container, "Target Node:", action, "target_path",
+			"Node to add/remove (leave empty for parent, or $collider)")
+		_add_string_field(container, "Group Name:", action, "group_name",
+			"e.g., enemies, power_ups, active")
 
 
 # -- Field Helpers (same pattern as condition_dialog.gd) --
