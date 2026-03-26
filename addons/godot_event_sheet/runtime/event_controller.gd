@@ -344,6 +344,10 @@ func _track_key_states() -> void:
 	var sheet := event_sheet as ESEventSheet
 	if not sheet:
 		return
+	# Track mouse button states for ESMouseCondition JUST_PRESSED/JUST_RELEASED detection.
+	set_meta("_es_prev_mouse_left", Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT))
+	set_meta("_es_prev_mouse_right", Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT))
+	set_meta("_es_prev_mouse_middle", Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE))
 	# Track "any key" state for ANY_JUST_PRESSED/ANY_JUST_RELEASED conditions.
 	set_meta("_es_any_key_prev", Input.is_anything_pressed())
 	for event_res in sheet.events:

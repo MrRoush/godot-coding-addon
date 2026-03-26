@@ -11,6 +11,10 @@ const ESPropertyCondition := preload("res://addons/godot_event_sheet/conditions/
 const ESTimerCondition := preload("res://addons/godot_event_sheet/conditions/timer_condition.gd")
 const ESLifecycleCondition := preload("res://addons/godot_event_sheet/conditions/lifecycle_condition.gd")
 const ESPhysicsCondition := preload("res://addons/godot_event_sheet/conditions/physics_condition.gd")
+const ESMouseCondition := preload("res://addons/godot_event_sheet/conditions/mouse_condition.gd")
+const ESRandomCondition := preload("res://addons/godot_event_sheet/conditions/random_condition.gd")
+const ESDistanceCondition := preload("res://addons/godot_event_sheet/conditions/distance_condition.gd")
+const ESGroupCondition := preload("res://addons/godot_event_sheet/conditions/group_condition.gd")
 const PropertyHints := preload("res://addons/godot_event_sheet/editor/property_hints.gd")
 
 var _condition_list: Tree
@@ -32,6 +36,7 @@ const CONDITION_CATEGORIES := [
 			{"label": "Input: Key/Action Held", "key": "input_held"},
 			{"label": "Input: Any Key Pressed", "key": "input_any_pressed"},
 			{"label": "Input: Any Key Released", "key": "input_any_released"},
+			{"label": "Input: Mouse Button", "key": "mouse_button"},
 			{"label": "UI: Button Pressed", "key": "ui_button_pressed"},
 		]
 	},
@@ -78,6 +83,14 @@ const CONDITION_CATEGORIES := [
 			{"label": "Timer: One-Shot Delay", "key": "timer_oneshot"},
 		]
 	},
+	{
+		"label": "🎲 Utility",
+		"items": [
+			{"label": "Utility: Random Chance", "key": "random_chance"},
+			{"label": "Utility: Distance Check", "key": "distance_check"},
+			{"label": "Utility: Is In Group", "key": "group_check"},
+		]
+	},
 ]
 
 # Flat map kept for backward compat (used by add_event_dialog key lookup).
@@ -106,6 +119,10 @@ const CONDITION_TYPES := {
 	"Physics: Is Moving": "physics_is_moving",
 	"Physics: Is Stopped": "physics_is_stopped",
 	"Physics: Is Falling": "physics_is_falling",
+	"Input: Mouse Button": "mouse_button",
+	"Utility: Random Chance": "random_chance",
+	"Utility: Distance Check": "distance_check",
+	"Utility: Is In Group": "group_check",
 }
 
 
@@ -288,6 +305,14 @@ func create_condition_from_key(key: String) -> ESCondition:
 			var c := ESPhysicsCondition.new()
 			c.physics_check = ESPhysicsCondition.PhysicsCheck.IS_FALLING
 			return c
+		"mouse_button":
+			return ESMouseCondition.new()
+		"random_chance":
+			return ESRandomCondition.new()
+		"distance_check":
+			return ESDistanceCondition.new()
+		"group_check":
+			return ESGroupCondition.new()
 	return null
 
 
@@ -361,6 +386,30 @@ func build_property_fields(container: VBoxContainer, condition: ESCondition) -> 
 			"Path to CharacterBody2D/3D (leave empty for parent)")
 		_add_enum_field(container, "Physics Check:", condition, "physics_check",
 			["Is On Floor", "Is On Wall", "Is On Ceiling", "Is Moving", "Is Stopped", "Is Falling"])
+
+	elif condition is ESMouseCondition:
+		_add_enum_field(container, "Mouse Button:", condition, "button_type",
+			["Left Just Pressed", "Left Just Released", "Left Held",
+			 "Right Just Pressed", "Right Just Released", "Right Held",
+			 "Middle Just Pressed", "Middle Just Released", "Middle Held"])
+
+	elif condition is ESRandomCondition:
+		_add_float_field(container, "Probability (0–1):", condition, "probability")
+
+	elif condition is ESDistanceCondition:
+		_add_node_path_field(container, "Node A:", condition, "node_a_path",
+			"First node (leave empty for parent)")
+		_add_node_path_field(container, "Node B:", condition, "node_b_path",
+			"Second node to measure distance to (e.g., ../Player)")
+		_add_enum_field(container, "Comparison:", condition, "compare_op",
+			["< (Less Than)", "> (Greater Than)", "<= (Less/Equal)", ">= (Greater/Equal)"])
+		_add_float_field(container, "Distance (pixels):", condition, "distance")
+
+	elif condition is ESGroupCondition:
+		_add_node_path_field(container, "Node:", condition, "node_path",
+			"Node to check (leave empty for parent, or $collider)")
+		_add_string_field(container, "Group Name:", condition, "group_name",
+			"e.g., enemies, power_ups, coins")
 
 
 ## Helper: add a string input field.
