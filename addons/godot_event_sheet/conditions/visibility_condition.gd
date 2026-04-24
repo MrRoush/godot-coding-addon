@@ -12,7 +12,7 @@ enum VisibilityType {
 }
 
 ## Which visibility event to detect.
-@export var visibility_type: VisibilityType = VisibilityType.SCREEN_ENTERED
+@export_enum("Screen Entered (screen_entered):0", "Screen Exited (screen_exited):1", "Is On Screen (is_on_screen):2") var visibility_type: int = VisibilityType.SCREEN_ENTERED
 
 ## Path to the VisibleOnScreenNotifier2D/3D node.
 ## Leave empty to search the EventController's parent for a notifier child.

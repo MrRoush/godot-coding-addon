@@ -40,8 +40,8 @@ const COMMON_PROPERTIES := {
 	],
 	"CharacterBody2D": [
 		{"label": "Velocity", "prop": "velocity"},
-		{"label": "Horizontal Speed", "prop": "velocity.x"},
-		{"label": "Vertical Speed", "prop": "velocity.y"},
+		{"label": "Velocity X (Horizontal)", "prop": "velocity.x"},
+		{"label": "Velocity Y (Vertical)", "prop": "velocity.y"},
 		{"label": "Max Floor Angle", "prop": "floor_max_angle"},
 		{"label": "Stop on Slope", "prop": "floor_stop_on_slope"},
 		{"label": "Floor Snap Length", "prop": "floor_snap_length"},
@@ -49,8 +49,8 @@ const COMMON_PROPERTIES := {
 	],
 	"RigidBody2D": [
 		{"label": "Linear Velocity", "prop": "linear_velocity"},
-		{"label": "Horizontal Velocity", "prop": "linear_velocity.x"},
-		{"label": "Vertical Velocity", "prop": "linear_velocity.y"},
+		{"label": "Linear Velocity X", "prop": "linear_velocity.x"},
+		{"label": "Linear Velocity Y", "prop": "linear_velocity.y"},
 		{"label": "Spin Speed", "prop": "angular_velocity"},
 		{"label": "Mass", "prop": "mass"},
 		{"label": "Gravity Multiplier", "prop": "gravity_scale"},
@@ -120,7 +120,7 @@ const COMMON_PROPERTIES := {
 		{"label": "Max Audible Distance", "prop": "max_distance"},
 	],
 	"PointLight2D": [
-		{"label": "Light Brightness", "prop": "energy"},
+		{"label": "Light Energy (Brightness)", "prop": "energy"},
 		{"label": "Light Color", "prop": "color"},
 		{"label": "Light Enabled", "prop": "enabled"},
 		{"label": "Light Radius", "prop": "texture_scale"},

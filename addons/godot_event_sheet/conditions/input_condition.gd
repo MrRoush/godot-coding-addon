@@ -12,7 +12,7 @@ enum InputType {
 }
 
 ## The type of input check to perform.
-@export var input_type: InputType = InputType.JUST_PRESSED
+@export_enum("Just Pressed (is_action_just_pressed):0", "Just Released (is_action_just_released):1", "Is Held (is_action_pressed):2", "Any Just Pressed:3", "Any Just Released:4") var input_type: int = InputType.JUST_PRESSED
 
 ## The input action name (e.g., "ui_up", "ui_accept") or key name (e.g., "W", "Space").
 ## If this matches a registered Input Map action, the action is used.

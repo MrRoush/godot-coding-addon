@@ -19,7 +19,7 @@ enum CompareOp {
 @export var node_b_path: NodePath = NodePath("")
 
 ## Comparison operator applied to the measured distance.
-@export var compare_op: CompareOp = CompareOp.LESS_THAN
+@export_enum("Less Than (<):0", "Greater Than (>):1", "Less or Equal (<=):2", "Greater or Equal (>=):3") var compare_op: int = CompareOp.LESS_THAN
 
 ## Distance threshold in pixels (2D) or units (3D).
 @export var distance: float = 200.0

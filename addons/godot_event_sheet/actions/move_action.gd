@@ -81,8 +81,15 @@ func _execute_2d(node: Node2D, dt: float, controller: Node) -> void:
 		MoveType.MOVE_TOWARD_NODE:
 			var goal_node := _resolve_toward_node(controller)
 			if goal_node and goal_node is Node2D:
-				node.position = node.position.move_toward(
-					(goal_node as Node2D).global_position, speed * dt)
+				if node is CharacterBody2D:
+					var body := node as CharacterBody2D
+					var direction := node.global_position.direction_to(
+						(goal_node as Node2D).global_position)
+					body.velocity = direction * speed
+					body.move_and_slide()
+				else:
+					node.position = node.position.move_toward(
+						(goal_node as Node2D).global_position, speed * dt)
 		MoveType.SET_VELOCITY:
 			if node is CharacterBody2D:
 				var body := node as CharacterBody2D
@@ -118,8 +125,15 @@ func _execute_3d(node: Node3D, dt: float, controller: Node) -> void:
 		MoveType.MOVE_TOWARD_NODE:
 			var goal_node := _resolve_toward_node(controller)
 			if goal_node and goal_node is Node3D:
-				node.position = node.position.move_toward(
-					(goal_node as Node3D).global_position, speed * dt)
+				if node is CharacterBody3D:
+					var body := node as CharacterBody3D
+					var direction := node.global_position.direction_to(
+						(goal_node as Node3D).global_position)
+					body.velocity = direction * speed
+					body.move_and_slide()
+				else:
+					node.position = node.position.move_toward(
+						(goal_node as Node3D).global_position, speed * dt)
 		MoveType.SET_VELOCITY:
 			if node is CharacterBody3D:
 				var body := node as CharacterBody3D

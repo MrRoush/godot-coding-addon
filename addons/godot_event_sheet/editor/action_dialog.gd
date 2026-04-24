@@ -580,10 +580,11 @@ func build_property_fields(container: VBoxContainer, action: ESAction) -> void:
 
 	elif action is ESSetPropertyAction:
 		_add_node_and_property_fields_action(container, action)
-		_add_string_field(container, "Value:", action, "value",
+		_add_variant_value_field(container, "Value:", action, "value",
+			str(action.target_path), action.property_name,
 			"Value to set/add. Use {../Node:prop} for live values, e.g., Health: {../Player:health}")
 		_add_enum_field(container, "Mode:", action, "set_mode",
-			["Set", "Add", "Subtract", "Multiply", "Toggle", "Divide"])
+			["Assign (=)", "Add (+=)", "Subtract (-=)", "Multiply (*=)", "Toggle (not)", "Divide (/=)"])
 		_add_bool_field(container, "Use Deferred (for physics callbacks):", action, "use_deferred")
 
 	elif action is ESEmitSignalAction:
@@ -771,6 +772,146 @@ func build_property_fields(container: VBoxContainer, action: ESAction) -> void:
 
 
 # -- Field Helpers (same pattern as condition_dialog.gd) --
+
+## Detect the Godot Variant type of a named property on the resolved node.
+## Returns TYPE_NIL if the node or property cannot be resolved.
+func _get_property_godot_type(node_path: NodePath, property_name: String) -> int:
+	if _controller == null or not is_instance_valid(_controller):
+		return TYPE_NIL
+	var node: Node = null
+	var path_str := str(node_path)
+	if path_str.is_empty():
+		node = _controller.get_parent()
+	elif path_str == "$collider":
+		return TYPE_NIL  # Runtime-only; type unknown at edit time.
+	else:
+		node = _controller.get_node_or_null(node_path)
+		if node == null and _controller.get_parent():
+			node = _controller.get_parent().get_node_or_null(node_path)
+	if not node or property_name.is_empty():
+		return TYPE_NIL
+	var parts := property_name.split(".")
+	if parts.size() == 1:
+		if property_name in node:
+			return typeof(node.get(property_name))
+		return TYPE_NIL
+	# Dot notation (e.g., velocity.x): parent property determines component type.
+	var parent_prop := parts[0]
+	if not (parent_prop in node):
+		return TYPE_NIL
+	var parent_val = node.get(parent_prop)
+	# Vector2, Vector3, and Color components are always float.
+	if parent_val is Vector2 or parent_val is Vector3 or parent_val is Color:
+		return TYPE_FLOAT
+	return TYPE_NIL
+
+
+## Add a type-aware value input for a Variant property.
+## Detects the property type from the target node and shows a CheckBox (bool),
+## SpinBox (int/float), or LineEdit (string/unknown/placeholder).
+func _add_variant_value_field(container: VBoxContainer, label_text: String, obj: Object,
+		prop: String, node_path_str: String, property_name: String, hint: String = "") -> void:
+	var current_val = obj.get(prop)
+
+	# If the current value is a placeholder string, always show a string field.
+	var is_placeholder := current_val is String and "{" in (current_val as String)
+	if is_placeholder:
+		_add_string_field(container, label_text, obj, prop, hint)
+		return
+
+	var prop_type := _get_property_godot_type(NodePath(node_path_str), property_name)
+	match prop_type:
+		TYPE_BOOL:
+			var bool_val: bool = false
+			if current_val is bool:    bool_val = current_val
+			elif current_val is int:   bool_val = current_val != 0
+			elif current_val is float: bool_val = current_val != 0.0
+			elif current_val is String:
+				var s := (current_val as String).strip_edges().to_lower()
+				bool_val = s == "true" or s == "1" or s == "yes" or s == "on"
+			obj.set(prop, bool_val)
+			_add_bool_typed_field(container, label_text, obj, prop)
+		TYPE_INT:
+			var int_val: int = 0
+			if current_val is int:   int_val = current_val
+			elif current_val is float: int_val = int(current_val)
+			elif current_val is String:
+				var s := current_val as String
+				if s.is_valid_int():   int_val = s.to_int()
+				elif s.is_valid_float(): int_val = int(s.to_float())
+			obj.set(prop, int_val)
+			_add_int_typed_field(container, label_text, obj, prop)
+		TYPE_FLOAT:
+			var float_val: float = 0.0
+			if current_val is float: float_val = current_val
+			elif current_val is int: float_val = float(current_val)
+			elif current_val is String:
+				var s := current_val as String
+				if s.is_valid_float():   float_val = s.to_float()
+				elif s.is_valid_int():   float_val = float(s.to_int())
+			obj.set(prop, float_val)
+			_add_float_typed_field(container, label_text, obj, prop)
+		_:
+			# Unknown or complex type: fall back to a string field that also
+			# supports {../Node:prop} placeholder expressions.
+			var str_val: String = str(current_val) if current_val != null else ""
+			if not (current_val is String):
+				obj.set(prop, str_val)
+			_add_string_field(container, label_text, obj, prop, hint)
+
+
+## CheckBox field that writes a bool to a Variant property.
+func _add_bool_typed_field(container: VBoxContainer, label_text: String, obj: Object,
+		prop: String) -> void:
+	var hbox := HBoxContainer.new()
+	container.add_child(hbox)
+	var check := CheckBox.new()
+	check.text = label_text
+	var cur = obj.get(prop)
+	check.button_pressed = bool(cur) if cur != null else false
+	check.toggled.connect(func(val: bool): obj.set(prop, val))
+	hbox.add_child(check)
+
+
+## SpinBox field that writes a float to a Variant property.
+func _add_float_typed_field(container: VBoxContainer, label_text: String, obj: Object,
+		prop: String) -> void:
+	var hbox := HBoxContainer.new()
+	container.add_child(hbox)
+	var label := Label.new()
+	label.text = label_text
+	label.custom_minimum_size.x = 150
+	hbox.add_child(label)
+	var spin := SpinBox.new()
+	spin.min_value = -99999.0
+	spin.max_value = 99999.0
+	spin.step = 0.1
+	var cur = obj.get(prop)
+	spin.value = float(cur) if cur != null else 0.0
+	spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spin.value_changed.connect(func(val: float): obj.set(prop, val))
+	hbox.add_child(spin)
+
+
+## SpinBox field that writes an int to a Variant property.
+func _add_int_typed_field(container: VBoxContainer, label_text: String, obj: Object,
+		prop: String) -> void:
+	var hbox := HBoxContainer.new()
+	container.add_child(hbox)
+	var label := Label.new()
+	label.text = label_text
+	label.custom_minimum_size.x = 150
+	hbox.add_child(label)
+	var spin := SpinBox.new()
+	spin.min_value = -99999
+	spin.max_value = 99999
+	spin.step = 1
+	var cur = obj.get(prop)
+	spin.value = int(cur) if cur != null else 0
+	spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spin.value_changed.connect(func(val: float): obj.set(prop, int(val)))
+	hbox.add_child(spin)
+
 
 func _add_string_field(container: VBoxContainer, label_text: String, obj: Object,
 		prop: String, hint: String = "") -> void:

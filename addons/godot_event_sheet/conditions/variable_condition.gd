@@ -31,7 +31,7 @@ enum VariableScope {
 @export var scope: VariableScope = VariableScope.LOCAL
 
 ## The comparison operator to use.
-@export var compare_op: CompareOp = CompareOp.EQUAL
+@export_enum("Equal (==):0", "Not Equal (!=):1", "Greater Than (>):2", "Less Than (<):3", "Greater or Equal (>=):4", "Less or Equal (<=):5", "Contains (in / has):6") var compare_op: int = CompareOp.EQUAL
 
 ## The reference value to compare against.  Automatically converted to a
 ## matching type at runtime.

@@ -22,7 +22,7 @@ enum CountCompare {
 @export var group_name: String = ""
 
 ## The comparison operator.
-@export var compare_op: CountCompare = CountCompare.EQUAL
+@export_enum("Equal (==):0", "Not Equal (!=):1", "Greater Than (>):2", "Less Than (<):3", "Greater or Equal (>=):4", "Less or Equal (<=):5") var compare_op: int = CountCompare.EQUAL
 
 ## The value to compare the node count against.
 @export var compare_value: int = 0

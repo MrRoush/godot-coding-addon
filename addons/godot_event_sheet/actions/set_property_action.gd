@@ -18,11 +18,13 @@ enum SetMode {
 ## The property name to set (supports dot notation like "position.x").
 @export var property_name: String = ""
 
-## The value to set/add/subtract/multiply (as a string, auto-converted).
-@export var value: String = ""
+## The value to apply to the property.
+## Stored as the correct Godot type (bool, float, int) when entered via the dialog.
+## Store as a String to use placeholder expressions like {../Player:health}.
+@export var value: Variant = null
 
 ## How to apply the value to the property.
-@export var set_mode: SetMode = SetMode.SET
+@export_enum("Assign (=):0", "Add (+=):1", "Subtract (-=):2", "Multiply (*=):3", "Toggle (not):4", "Divide (/=):5") var set_mode: int = SetMode.SET
 
 ## When true, use set_deferred() instead of set().
 ## Required when changing physics properties (e.g., CollisionShape2D.disabled)
@@ -32,8 +34,9 @@ enum SetMode {
 
 func get_summary() -> String:
 	var target := str(target_path) if not target_path.is_empty() else "parent"
-	var mode_names := ["Set", "Add", "Subtract", "Multiply", "Toggle", "Divide"]
-	return "%s %s.%s = %s" % [mode_names[set_mode], target, property_name, value]
+	var mode_names := ["Assign (=)", "Add (+=)", "Subtract (-=)", "Multiply (*=)", "Toggle (not)", "Divide (/=)"]
+	var val_str := str(value) if value != null else ""
+	return "%s %s.%s = %s" % [mode_names[set_mode], target, property_name, val_str]
 
 
 func get_category() -> String:
@@ -80,7 +83,13 @@ func _set_nested_property(target: Node, parts: PackedStringArray, controller: No
 
 	if current is Vector2:
 		var vec := current as Vector2
-		var val := float(_resolve_placeholders(value, controller))
+		var val: float
+		if value is String:
+			val = float(_resolve_placeholders(value as String, controller))
+		elif value != null:
+			val = float(value)
+		else:
+			val = 0.0
 		match final_prop:
 			"x":
 				vec.x = _compute_float(vec.x, val)
@@ -96,7 +105,13 @@ func _set_nested_property(target: Node, parts: PackedStringArray, controller: No
 			target.set(parts[0], vec)
 	elif current is Vector3:
 		var vec := current as Vector3
-		var val := float(_resolve_placeholders(value, controller))
+		var val: float
+		if value is String:
+			val = float(_resolve_placeholders(value as String, controller))
+		elif value != null:
+			val = float(value)
+		else:
+			val = 0.0
 		match final_prop:
 			"x":
 				vec.x = _compute_float(vec.x, val)
@@ -113,7 +128,13 @@ func _set_nested_property(target: Node, parts: PackedStringArray, controller: No
 			target.set(parts[0], vec)
 	elif current is Color:
 		var col := current as Color
-		var val := float(_resolve_placeholders(value, controller))
+		var val: float
+		if value is String:
+			val = float(_resolve_placeholders(value as String, controller))
+		elif value != null:
+			val = float(value)
+		else:
+			val = 0.0
 		match final_prop:
 			"r": col.r = _compute_float(col.r, val)
 			"g": col.g = _compute_float(col.g, val)
@@ -129,27 +150,35 @@ func _set_nested_property(target: Node, parts: PackedStringArray, controller: No
 
 
 func _compute_value(current: Variant, controller: Node) -> Variant:
-	var resolved := _resolve_placeholders(value, controller)
+	# Resolve the actual value to apply, handling both typed and String/placeholder values.
+	var actual: Variant
+	if value is String:
+		var resolved := _resolve_placeholders(value as String, controller)
+		actual = _convert_to_type(resolved, typeof(current))
+	elif value != null:
+		actual = _coerce_to_type(value, typeof(current))
+	else:
+		actual = _coerce_to_type(0, typeof(current))
+
 	match set_mode:
 		SetMode.TOGGLE:
 			if current is bool:
 				return not current
 			return not bool(current)
 		SetMode.SET:
-			return _convert_to_type(resolved, typeof(current))
+			return actual
 		SetMode.ADD:
-			return current + _convert_to_type(resolved, typeof(current))
+			return current + actual
 		SetMode.SUBTRACT:
-			return current - _convert_to_type(resolved, typeof(current))
+			return current - actual
 		SetMode.MULTIPLY:
-			return current * _convert_to_type(resolved, typeof(current))
+			return current * actual
 		SetMode.DIVIDE:
-			var divisor = _convert_to_type(resolved, typeof(current))
-			if (typeof(divisor) == TYPE_FLOAT and divisor == 0.0) or \
-					(typeof(divisor) == TYPE_INT and divisor == 0):
+			if (typeof(actual) == TYPE_FLOAT and actual == 0.0) or \
+					(typeof(actual) == TYPE_INT and actual == 0):
 				push_warning("EventSheet: SetProperty DIVIDE by zero ignored.")
 				return current
-			return current / divisor
+			return current / actual
 	return current
 
 
@@ -196,6 +225,25 @@ func _convert_to_type(val: String, target_type: int) -> Variant:
 			if lower in ["false", "no", "off"]:
 				return false
 			return val
+
+
+## Coerce a typed Variant value to match the target_type without string parsing.
+func _coerce_to_type(val: Variant, target_type: int) -> Variant:
+	if val == null:
+		match target_type:
+			TYPE_INT:   return 0
+			TYPE_FLOAT: return 0.0
+			TYPE_BOOL:  return false
+			TYPE_STRING: return ""
+			_: return null
+	if typeof(val) == target_type:
+		return val
+	match target_type:
+		TYPE_INT:    return int(val)
+		TYPE_FLOAT:  return float(val)
+		TYPE_BOOL:   return bool(val)
+		TYPE_STRING: return str(val)
+	return val
 
 
 func _resolve_target(controller: Node) -> Node:

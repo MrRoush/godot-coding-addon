@@ -20,16 +20,19 @@ enum CompareOp {
 @export var property_name: String = ""
 
 ## The comparison operator.
-@export var compare_op: CompareOp = CompareOp.EQUAL
+@export_enum("Equal (==):0", "Not Equal (!=):1", "Greater Than (>):2", "Less Than (<):3", "Greater or Equal (>=):4", "Less or Equal (<=):5") var compare_op: int = CompareOp.EQUAL
 
-## The value to compare against (entered as a string, auto-converted).
-@export var compare_value: String = ""
+## The value to compare against.
+## Stored as the correct Godot type (bool, float, int) when entered via the dialog.
+## Store as a String to use placeholder expressions like {../Player:health}.
+@export var compare_value: Variant = null
 
 
 func get_summary() -> String:
 	var ops := ["==", "!=", ">", "<", ">=", "<="]
 	var target := str(node_path) if not node_path.is_empty() else "parent"
-	return "%s.%s %s %s" % [target, property_name, ops[compare_op], compare_value]
+	var val_str := str(compare_value) if compare_value != null else ""
+	return "%s.%s %s %s" % [target, property_name, ops[compare_op], val_str]
 
 
 func get_category() -> String:
@@ -45,7 +48,14 @@ func evaluate(controller: Node, _delta: float) -> bool:
 	if current_value == null:
 		return false
 
-	var test_value = _convert_value(compare_value, typeof(current_value))
+	# Resolve the comparison value: support typed values and placeholder strings.
+	var test_value: Variant
+	if compare_value is String:
+		test_value = _convert_value(compare_value as String, typeof(current_value))
+	elif compare_value != null:
+		test_value = compare_value
+	else:
+		test_value = _convert_value("0", typeof(current_value))
 
 	match compare_op:
 		CompareOp.EQUAL:

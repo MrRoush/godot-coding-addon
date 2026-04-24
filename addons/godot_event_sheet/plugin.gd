@@ -6,6 +6,7 @@ extends EditorPlugin
 
 const EventController := preload("res://addons/godot_event_sheet/runtime/event_controller.gd")
 const EventSheetEditor := preload("res://addons/godot_event_sheet/editor/event_sheet_editor.gd")
+const PlayerMovement := preload("res://addons/godot_event_sheet/movement/player_movement.gd")
 
 var _editor_panel: Control = null
 
@@ -22,6 +23,12 @@ func _enter_tree() -> void:
 		"EventController",
 		"Node",
 		EventController,
+		preload("res://addons/godot_event_sheet/icons/icon.svg")
+	)
+	add_custom_type(
+		"PlayerMovement",
+		"Node",
+		PlayerMovement,
 		preload("res://addons/godot_event_sheet/icons/icon.svg")
 	)
 
@@ -45,6 +52,7 @@ func _exit_tree() -> void:
 
 	remove_custom_type("EventSheet")
 	remove_custom_type("EventController")
+	remove_custom_type("PlayerMovement")
 
 	# Remove the global variables autoload when the plugin is disabled.
 	if ProjectSettings.has_setting("autoload/ESGlobalVariables"):
